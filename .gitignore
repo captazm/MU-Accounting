@@ -35,3 +35,4 @@ ui-debug.log*
 
 # Antigravity artifacts (if any are saved in the project)
 .gemini/
+.claude/

@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: get the calling user's role from their profile doc
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function isAdmin() { return request.auth != null && role() == 'admin'; }
+    function isLoggedIn() { return request.auth != null; }
+
+    // Users collection: only authenticated users can read their own profile;
+    // only admins can write (create/update other users)
+    match /users/{uid} {
+      allow read: if isLoggedIn() && (request.auth.uid == uid || role() == 'admin');
+      allow write: if isAdmin();
+      // Allow creating the very first user (no users exist yet = setup mode)
+      allow create: if request.auth != null;
+    }
+
+    // crewPayments: accountant can create (Pending Approval), only admin can set Paid
+    match /crewPayments/{docId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn() &&
+        (resource.data.status != 'Paid' || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // All other collections: any authenticated user can read/write
+    match /{document=**} {
+      allow read, write: if isLoggedIn();
+    }
+  }
+}

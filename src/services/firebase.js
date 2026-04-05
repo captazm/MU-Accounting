@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, writeBatch, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyAXOAoXKqKdaMXi-Q3KiIeQpgyEQul-ghU",
@@ -19,6 +19,25 @@ export async function fsGetCol(colName) {
     return snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
   } catch (e) {
     console.error("fsGetCol error:", colName, e);
+    return null;
+  }
+}
+
+export function fsListenCol(colName, cb) {
+  return onSnapshot(collection(db, colName), (snap) => {
+    const data = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    cb(data);
+  }, (err) => {
+    console.error("fsListenCol error:", colName, err);
+  });
+}
+
+export async function fsGetDoc(colName, id) {
+  try {
+    const snap = await getDoc(doc(db, colName, id));
+    return snap.exists() ? { _docId: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    console.error("fsGetDoc error:", colName, id, e);
     return null;
   }
 }
@@ -46,7 +65,6 @@ export async function fsUpdateDoc(colName, id, data) {
 
 export async function fsBatchSet(colName, items) {
   try {
-    // Firestore batch limit = 500
     for (let i = 0; i < items.length; i += 450) {
       const batch = writeBatch(db);
       items.slice(i, i + 450).forEach(item => {
@@ -66,7 +84,6 @@ export async function fsBatchSet(colName, items) {
 
 export async function fsDelDoc(colName, id) {
   try {
-    const { deleteDoc } = await import("firebase/firestore");
     await deleteDoc(doc(db, colName, id));
     return true;
   } catch (e) {

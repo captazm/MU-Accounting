@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
+import Tesseract from "tesseract.js";
 import { C, Badge, Btn, Stat, Filt, Mod, thS, tdS } from "./components/UI";
 import csvCrew from "./data/crewData";
-import { fsGetCol, fsSetDoc, fsUpdateDoc, fsBatchSet } from "./services/firebase";
+import { fsGetCol, fsSetDoc, fsUpdateDoc, fsBatchSet, fsDelDoc } from "./services/firebase";
 import { onAuthChange, authSignOut, fetchUserProfile, hasAnyUser } from "./services/auth";
 import LoginPage from "./components/LoginPage";
 import UserManagement from "./components/UserManagement";
@@ -110,7 +111,7 @@ export default function App() {
     { id: "users",     label: "User Management", icon: "🔐", adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
-  const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet };
+  const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc };
   const p = { crew, setCrew, bills, setBills, payments, setPayments, slips, setSlips, crewPay, setCrewPay, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, setTab, showT, vessels, clients, fs, fsOk, selectedMonth, setSelectedMonth, userRole };
 
   const Spinner = ({ msg }) => (<div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: C.txt, fontFamily: "sans-serif" }}><div style={{ width: 50, height: 50, borderRadius: 12, background: `linear-gradient(135deg,${C.pri},${C.inf})`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#fff", fontSize: 22, fontWeight: 700 }}>M</div><div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>MAHAR UNITY SRPS</div><div style={{ color: C.txM, fontSize: 12 }}>{msg || "Loading..."}</div></div>);
@@ -328,16 +329,67 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
 function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
   const [pf, setPf] = useState({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0] });
   const [res, setRes] = useState(null);
+  const [ocrLd, setOcrLd] = useState(false);
+  const [ocrMsg, setOcrMsg] = useState("");
   const sent = bills.filter(b => b.status === "Sent");
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
+  
+  const handleOcr = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!pf.billId) { showT("Please select a Bill first to verify the amount against.", "wrn"); return; }
+    
+    setOcrLd(true); setOcrMsg("Scanning slip..."); setRes(null);
+    try {
+      const { data: { text } } = await Tesseract.recognize(file, 'eng');
+      const b = bills.find(x => x.id === pf.billId);
+      if (!b) throw new Error("Bill not found.");
+      
+      const targetAmt = b.total;
+      // Find all numbers in text
+      const nums = text.match(/\d+[.,]?\d*/g);
+      let foundMatch = false;
+      let highestVal = 0;
+      
+      if (nums) {
+        for (let str of nums) {
+          const val = parseFloat(str.replace(/,/g, ""));
+          if (!isNaN(val)) {
+            if (val > highestVal) highestVal = val;
+            if (Math.abs(val - targetAmt) < 0.01) {
+              foundMatch = true; break;
+            }
+          }
+        }
+      }
+      
+      if (foundMatch) {
+         setPf(prev => ({ ...prev, amount: String(targetAmt) }));
+         setOcrMsg("✅ OCR Verified: Matching amount found in slip.");
+         showT("OCR Match found!");
+      } else {
+         setOcrMsg(`❌ OCR Warning: Mismatch. Expected $${targetAmt.toLocaleString()}, largest number found was $${highestVal.toLocaleString()}.`);
+         showT("OCR Amount Mismatch", "wrn");
+      }
+    } catch (err) {
+      console.error(err);
+      setOcrMsg("⚠️ OCR Error: Failed to process image.");
+    }
+    setOcrLd(false);
+  };
+
   const rec = async () => { const bill = bills.find(b => b.id === pf.billId); if (!bill) return; const amt = Number(pf.amount); const diff = amt - bill.total;
     const pay = { id: `PAY-${String(payments.length + 1).padStart(3, "0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff };
     setPayments([...payments, pay]); if (fsOk) fs.setD("payments", pay.id, pay);
     if (Math.abs(diff) < 0.01) { setBills(bills.map(b => b.id === bill.id ? { ...b, status: "Paid" } : b)); if (fsOk) fs.upD("bills", bill.id, { status: "Paid" }); setRes({ ok: true, msg: `Matches ${bill.id}. PAID.` }); showT("Matched!"); }
     else { setRes({ ok: false, msg: `Mismatch on ${bill.id}.`, diff }); showT("Mismatch", "wrn"); }
-    setPf({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0] }); };
+    setPf({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0] }); setOcrMsg(""); };
+    
   return <div>
-    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Record Payment</h4>{!sent.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No outstanding (Sent) bills.</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Bill</label><select value={pf.billId} onChange={e => { const b = bills.find(b => b.id === e.target.value); setPf({ ...pf, billId: e.target.value, amount: b ? String(b.total) : "" }); }} style={inp}><option value="">Select</option>{sent.map(b => <option key={b.id} value={b.id}>{b.id}-{b.client}</option>)}</select></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1" }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount}>Reconcile</Btn></div></div>}</div>
+    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Record Payment & Bank Slip Verification</h4>{!sent.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No outstanding (Sent) bills.</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>1. Select Bill</label><select value={pf.billId} onChange={e => { const b = bills.find(x => x.id === e.target.value); setPf({ ...pf, billId: e.target.value, amount: b ? String(b.total) : "" }); setOcrMsg(""); }} style={inp}><option value="">Select</option>{sent.map(b => <option key={b.id} value={b.id}>{b.id}-{b.client}</option>)}</select></div>
+    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>2. Upload Bank Slip for OCR Validation</label><div style={{ display: "flex", gap: 8 }}><input type="file" accept="image/*" onChange={handleOcr} style={{...inp, flex: 1}} disabled={!pf.billId || ocrLd} /></div></div>
+    {ocrMsg && <div style={{ gridColumn: "1/-1", fontSize: 11, padding: 8, borderRadius: 5, background: ocrMsg.includes("✅") ? C.okB : (ocrMsg.includes("❌") ? C.wrnB : C.bg), color: ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.txM), border: `1px solid ${ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.bdr)}` }}>{ocrLd ? "Scanning Image..." : ocrMsg}</div>}
+    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>3. Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1", marginTop: 8 }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount}>Reconcile & Create Resulting Slips</Btn></div></div>}</div>
     {res && <div style={{ background: res.ok ? C.okB : C.wrnB, border: `1px solid ${res.ok ? C.ok : C.wrn}33`, borderRadius: 7, padding: 12, marginBottom: 14 }}><div style={{ fontWeight: 600, color: res.ok ? C.ok : C.wrn }}>{res.ok ? "MATCH" : "MISMATCH"} - {res.msg}</div>{res.diff != null && !res.ok && <div style={{ fontWeight: 700, color: C.wrn, marginTop: 3 }}>Difference: ${Math.abs(res.diff).toLocaleString()}</div>}</div>}
     {payments.length > 0 && <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["ID", "Bill", "Client", "Amount", "Ref", "Date", "Status"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead><tbody>{payments.slice().reverse().map(p => <tr key={p.id}><td style={tdS}><span style={{ fontWeight: 600, color: C.acc }}>{p.id}</span></td><td style={tdS}>{p.billId}</td><td style={tdS}>{p.client}</td><td style={tdS}>${(p.amount || 0).toLocaleString()}</td><td style={tdS}>{p.ref}</td><td style={tdS}>{p.date}</td><td style={tdS}><Badge t={p.match ? "Matched" : "Mismatch"} c={p.match ? "green" : "red"} /></td></tr>)}</tbody></table></div>}
   </div>;
@@ -347,13 +399,16 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
 function SlipV({ crew, payments, slips, setSlips, showT, fs, fsOk }) {
   const [sp, setSp] = useState(""); const [sc, setSc] = useState([]);
   const mt = payments.filter(p => p.match); const py = payments.find(p => p.id === sp);
-  const cc = py ? crew.filter(c => c.client === py.client) : [];
+  const assignedCrewIds = py ? slips.filter(s => s.payId === sp).flatMap(s => s.crewIds || []) : [];
+  const cc = py ? crew.filter(c => c.client === py.client && !assignedCrewIds.includes(c.id)) : [];
+  const assignedCount = py ? (crew.filter(c => c.client === py.client).length - cc.length) : 0;
   const tg = id => setSc(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
   const up = () => { if (!sp || !sc.length) return; const sl = { id: `SLIP-${String(slips.length + 1).padStart(3, "0")}`, payId: sp, client: py.client, crewIds: [...sc], date: new Date().toISOString().split("T")[0] }; setSlips([...slips, sl]); if (fsOk) fs.setD("slips", sl.id, sl); showT(`Slip ${sl.id} created`); setSp(""); setSc([]); };
+  const delSlip = async (id) => { setSlips(slips.filter(s => s.id !== id)); if (fsOk) await fs.delD("slips", id); showT(`Slip ${id} deleted`, "wrn"); };
   return <div>
-    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 600 }}>Upload Salary Slip</h4><p style={{ fontSize: 10.5, color: C.txD, margin: "0 0 10px" }}>Select matched payment & choose crew.</p>{!mt.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No matched payments yet.</div> : <><div style={{ marginBottom: 10 }}><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment</label><select value={sp} onChange={e => { setSp(e.target.value); setSc([]); }} style={{ ...inp, maxWidth: 400 }}><option value="">Select</option>{mt.map(p => <option key={p.id} value={p.id}>{p.id}-{p.client}</option>)}</select></div>{sp && cc.length > 0 && <><div style={{ display: "flex", gap: 4, marginBottom: 8 }}><Btn v="ghost" onClick={() => setSc(cc.map(c => c.id))}>All</Btn><Btn v="ghost" onClick={() => setSc([])}>Clear</Btn></div><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 5, marginBottom: 10, maxHeight: 300, overflow: "auto" }}>{cc.map(c => { const sel = sc.includes(c.id); return <div key={c.id} onClick={() => tg(c.id)} style={{ padding: "6px 8px", borderRadius: 5, cursor: "pointer", background: sel ? C.priG : C.bg, border: `1px solid ${sel ? C.pri : C.bdr}`, display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${sel ? C.pri : C.txD}`, background: sel ? C.pri : "transparent", flexShrink: 0 }} /><div><div style={{ fontSize: 11.5, fontWeight: 500 }}>{c.name}</div><div style={{ fontSize: 9.5, color: C.txD }}>{c.rank} · {c.vessel}</div></div></div>; })}</div><Btn onClick={up} disabled={!sc.length}>Upload ({sc.length} crew)</Btn></>}</>}</div>
-    {slips.length > 0 && slips.slice().reverse().map(sl => <div key={sl.id} style={{ background: C.card, borderRadius: 7, border: `1px solid ${C.bdr}`, padding: 12, marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}><span style={{ fontWeight: 700, color: C.acc }}>{sl.id}</span><span style={{ fontSize: 10, color: C.txD }}>{sl.date}</span></div><div style={{ fontSize: 11.5, color: C.txM, marginBottom: 5 }}>Pay: {sl.payId} · {sl.client}</div><div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{(sl.crewIds || []).map(cid => { const c = crew.find(cr => cr.id === cid); return c ? <span key={cid} style={{ background: C.okB, color: C.ok, padding: "2px 6px", borderRadius: 3, fontSize: 10 }}>{c.name}</span> : null; })}</div></div>)}
+    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 600 }}>Upload Salary Slip</h4><p style={{ fontSize: 10.5, color: C.txD, margin: "0 0 10px" }}>Select matched payment & choose crew.</p>{!mt.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No matched payments yet.</div> : <><div style={{ marginBottom: 10 }}><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment</label><select value={sp} onChange={e => { setSp(e.target.value); setSc([]); }} style={{ ...inp, maxWidth: 400 }}><option value="">Select</option>{mt.map(p => <option key={p.id} value={p.id}>{p.id}-{p.client}</option>)}</select></div>{sp && <div style={{ fontSize: 10.5, color: C.inf, marginBottom: 8 }}>{assignedCount} crew already assigned to slips for this payment.</div>}{sp && cc.length === 0 && assignedCount > 0 && <div style={{ padding: 10, background: C.okB, color: C.ok, borderRadius: 5, fontSize: 11 }}>All crew members for this payment have been assigned to uploaded slips.</div>}{sp && cc.length > 0 && <><div style={{ display: "flex", gap: 4, marginBottom: 8 }}><Btn v="ghost" onClick={() => setSc(cc.map(c => c.id))}>All</Btn><Btn v="ghost" onClick={() => setSc([])}>Clear</Btn></div><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 5, marginBottom: 10, maxHeight: 300, overflow: "auto" }}>{cc.map(c => { const sel = sc.includes(c.id); return <div key={c.id} onClick={() => tg(c.id)} style={{ padding: "6px 8px", borderRadius: 5, cursor: "pointer", background: sel ? C.priG : C.bg, border: `1px solid ${sel ? C.pri : C.bdr}`, display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${sel ? C.pri : C.txD}`, background: sel ? C.pri : "transparent", flexShrink: 0 }} /><div><div style={{ fontSize: 11.5, fontWeight: 500 }}>{c.name}</div><div style={{ fontSize: 9.5, color: C.txD }}>{c.rank} · {c.vessel}</div></div></div>; })}</div><Btn onClick={up} disabled={!sc.length}>Upload ({sc.length} crew)</Btn></>}</>}</div>
+    {slips.length > 0 && slips.slice().reverse().map(sl => <div key={sl.id} style={{ background: C.card, borderRadius: 7, border: `1px solid ${C.bdr}`, padding: 12, marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontWeight: 700, color: C.acc }}>{sl.id}</span><div style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ fontSize: 10, color: C.txD }}>{sl.date}</span><button onClick={() => delSlip(sl.id)} style={{ background: "transparent", border: "none", color: C.wrn, cursor: "pointer", fontSize: 10 }}>Delete</button></div></div><div style={{ fontSize: 11.5, color: C.txM, marginBottom: 5 }}>Pay: {sl.payId} · {sl.client}</div><div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{(sl.crewIds || []).map(cid => { const c = crew.find(cr => cr.id === cid); return c ? <span key={cid} style={{ background: C.okB, color: C.ok, padding: "2px 6px", borderRadius: 3, fontSize: 10 }}>{c.name}</span> : null; })}</div></div>)}
   </div>;
 }
 
@@ -371,15 +426,28 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole }) 
 
   // Accountant: process slip → status "Pending Approval"
   const proc = async (sl) => {
+    // Look up the bill via payment
+    const payment = payments.find(p => p.id === sl.payId);
+    const bill = payment ? bills.find(b => b.id === payment.billId) : null;
+
     const newPays = (sl.crewIds || [])
       .filter(id => !processedIds.has(id))
       .map((cid, i) => {
         const c = crew.find(cr => cr.id === cid);
         if (!c) return null;
+        
+        let actualPayment = c.ownerPaid || 0;
+        if (bill && bill.crew) {
+          const billCrew = bill.crew.find(bc => bc.id === cid);
+          if (billCrew && billCrew.totalPayment !== undefined) {
+             actualPayment = billCrew.totalPayment;
+          }
+        }
+
         return {
           id: `CPAY-${String(crewPay.length + i + 1).padStart(3, "0")}`,
           crewId: cid, crewName: c.name, slipId: sl.id,
-          total: c.ownerPaid || 0, bankAmount: c.ownerPaid || 0, cashAmount: 0,
+          total: actualPayment, bankAmount: actualPayment, cashAmount: 0,
           type: c.allotment?.type || "bank",
           status: "Pending Approval",
           date: new Date().toISOString().split("T")[0],

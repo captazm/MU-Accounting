@@ -64,4 +64,15 @@ export async function fsBatchSet(colName, items) {
   }
 }
 
+export async function fsDelDoc(colName, id) {
+  try {
+    const { deleteDoc } = await import("firebase/firestore");
+    await deleteDoc(doc(db, colName, id));
+    return true;
+  } catch (e) {
+    console.error("fsDelDoc error:", colName, id, e);
+    return false;
+  }
+}
+
 export { db };

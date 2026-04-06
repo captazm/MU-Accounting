@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, writeBatch, onSnapshot, getDoc, deleteDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export const firebaseConfig = {
   apiKey: "AIzaSyAXOAoXKqKdaMXi-Q3KiIeQpgyEQul-ghU",
@@ -12,6 +13,7 @@ export const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 export async function fsGetCol(colName) {
   try {
@@ -92,4 +94,15 @@ export async function fsDelDoc(colName, id) {
   }
 }
 
-export { db };
+export async function fsUploadFile(file, path) {
+  try {
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+  } catch (e) {
+    console.error("fsUploadFile error:", path, e);
+    return null;
+  }
+}
+
+export { db, storage };

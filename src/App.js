@@ -1,27 +1,29 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Tesseract from "tesseract.js";
 import { C, Badge, Btn, Stat, Filt, Mod, thS, tdS } from "./components/UI";
-import { fsListenCol, fsSetDoc, fsUpdateDoc, fsBatchSet, fsDelDoc, fsGetDoc } from "./services/firebase";
+import { fsListenCol, fsSetDoc, fsUpdateDoc, fsBatchSet, fsDelDoc, fsGetDoc, fsUploadFile } from "./services/firebase";
 import { onAuthChange, authSignOut, fetchUserProfile, hasAnyUser } from "./services/auth";
 import LoginPage from "./components/LoginPage";
 import UserManagement from "./components/UserManagement";
 
+const logoBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQABLAEsAAD/4QCMRXhpZgAATU0AKgAAAAgABQESAAMAAAABAAEAAAEaAAUAAAABAAAASgEbAAUAAAABAAAAUgEoAAMAAAABAAIAAIdpAAQAAAABAAAAWgAAAAAAAAEsAAAAAQAAASwAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAAaGgAwAEAAAAAQAAAb4AAAAA/+0AOFBob3Rvc2hvcCAzLjAAOEJJTQQEAAAAAAAAOEJJTQQlAAAAAAAQ1B2M2Y8AsgTpgAmY7PhCfv/AABEIAb4BoQMBIgACEQEDEQH/xAAfAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgv/xAC1EAACAQMDAgQDBQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygpKjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5+jp6vHy8/T19vf4+fr/xAAfAQADAQEBAQEBAQEBAAAAAAAAAQIDBAUGBwgJCgv/xAC1EQACAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/3QAEABv/2gAMAwEAAhEDEQA/AP1SooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/9D9UqKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//R/VKiiigAoooyKACik3D16UuRQAUUUZFABRRketGRQAUUZzRQAUUUUAFFFFABRRmjNABRRmgMD0IPegAooyKM0AFFGaKACiiigAooooAKKKKACiiigAooyKMj1oAKKMj1oyKACijNGRQAUUUUAFFFGaACik3D1FLuHqKACijI9aMigAooyKMigAoozmigAooooAKKKPAP/9L9UqKKKAA0w4Az0HrTz0rF8Y+LNN8DeF9T17VZhb6fp8DXEznGcKM4A7SeAB3JA701duyKjFyaiupj/E74qeGfhH4ck1rxNqMdjajiOPrLcP2SNerN9OnU4AJr4U+KP/BRLxf4gupLfwVYW/hjTwfkublFubp/chv3aD2wx/2q8I+N3xp1v44+NrnXdVlaO1BKWFgHzHyQ54Udi3Qs3c+wAHn1e7QwcUuae5+j5dkVGjBVMQuaXboj068/ab+K19cNNL4+1sO3UQ3JiXPsqYArpfB/7afxa8I3KMfEv9t2ynm11aFZlb6vgSD8Hrwyiu10YNWaR78sDhpLldJW9D9O/wBn/wDbe8M/Fq8tdD1u3HhjxNNhIo3k3W103QCNzjDE9EYewLE19LhgfSvwuU4IIODX6S/sNftHT/EzQJPCHiK6M/iTSYQ8F1KxL3ltwMsf4nQkKSeSCp5O415GJwqprmp7Hw+b5KsNH2+H+Hqux9XAdeKWkBB5pa8s+PA9KaeOe1OPArP1zXNP8O6Vc6jql7BYWNshkmuLiQJHGo7kngUJXY0m3Zbl7Oe9YHjDx/4b8Aad9t8R65YaNbHIV72dY95HZQeWPsMmviP48f8ABQa8u5bjSPhpH9mtRlX167izJJ/1xib7oxj5nBPP3QQK+OfEHiPVfFeqS6lrOo3Wq6hNy91eSmWRvqTyPp0+lelSwUp6z0PqsFw/WrpTrvlX4n6QeLf+Chnwx0IvHpaat4jkxw9pa+VFn3aUq35Ka811D/gpuQ7rY/D4leNsk+rYP4qIf618L0V6CwVJH1FPIMDD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";
+
 const getLH = () => `
-  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #581c87; padding-bottom: 10px; margin-bottom: 20px;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 10px; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; font-family: sans-serif;">M</div>
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #86198f; padding-bottom: 12px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <img src="${window.location.origin}/logo.jpg" style="height: 60px; width: auto;" alt="Logo" onerror="this.src='/logo.jpg'" />
       <div>
-        <div style="color: #581c87; font-size: 16px; font-weight: 800; line-height: 1.1; margin-bottom: 4px;">MAHAR UNITY COMPANY LIMITED (Marine Services)</div>
-        <div style="font-size: 9.5px; color: #4b5563; line-height: 1.4;">
+        <div style="color: #86198f; font-size: 17px; font-weight: 800; line-height: 1.1; margin-bottom: 4px; letter-spacing: -0.01em;">MAHAR UNITY COMPANY LIMITED (Marine Services)</div>
+        <div style="font-size: 10px; color: #4b5563; line-height: 1.5;">
           No.87, SAN PYA(4), YAMONE NAR (2) Ward, DAWBON Tsp, Yangon, Myanmar.<br/>
           Ph: +95-9793832006, +95-9269016699 | Email: crewing@maharunity.com | Web: www.maharunity.com
         </div>
       </div>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-      <div style="display: flex; align-items: center; gap: 8px; border: 1px solid #1e40af; border-radius: 4px; overflow: hidden; height: 32px;">
-        <div style="background: #1e40af; color: white; padding: 0 6px; height: 100%; display: flex; align-items: center; font-size: 9px; font-weight: 700;">ANAB</div>
-        <div style="padding: 0 8px; color: #1e40af; font-size: 8px; font-weight: 700; text-align: center;">ISO 9001:2015</div>
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+      <div style="display: flex; align-items: center; gap: 8px; border: 1.5px solid #1e3a8a; border-radius: 4px; overflow: hidden; height: 36px; background: white;">
+        <div style="background: #1e3a8a; color: white; padding: 0 8px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 800;">ANAB</div>
+        <div style="padding: 0 10px; color: #1e3a8a; font-size: 9px; font-weight: 800; text-align: center; line-height: 1.1;">ISO 9001:2015<br/><span style="font-size: 7px; font-weight: 400;">Certified</span></div>
       </div>
     </div>
   </div>`;
@@ -190,7 +192,7 @@ export default function App() {
     { id: "crew",      label: "Crew Registry", icon: "👥" },
     { id: "billing",   label: "Monthly Billing", icon: "📄" },
     { id: "reconcile", label: "Reconciliation", icon: "🔍" },
-    { id: "slip",      label: "Slip Upload", icon: "📋" },
+    { id: "slip",      label: "Salary Assignment", icon: "📋" },
     { id: "dist",      label: "Payment Dist.", icon: "💸" },
     { id: "board",     label: "Status Board", icon: "📌" },
     { id: "users",     label: "User Management", icon: "🔐", adminOnly: true },
@@ -380,6 +382,7 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
 // ============== BILLING ==============
 function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
   const [sc, setSc] = useState(""); const [mo, setMo] = useState("2026-04"); const [vb, setVb] = useState(null);
+  const [confDel, setConfDel] = useState(null);
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none" };
   const getDIM = (y, m) => new Date(y, m, 0).getDate();
   const fmtD = (d, m, y) => { const ms = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]; return `${d}.${ms[m - 1]}.${y}`; };
@@ -387,15 +390,53 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
     let cl = crew.filter(c => c.client === sc); 
     if (sc === "Mr.Xing & Mr.Zhong") { cl = crew.filter(c => c.client === "XING" || c.client === "MR.ZHONG"); }
     else if (sc === "CHH (All)") { cl = crew.filter(c => c.client && c.client.startsWith("CHH")); }
-    if (!cl.length) { showT(`No crew found for ${sc}`, "wrn"); return; }
-    const [y, m] = mo.split("-").map(Number); const dim = getDIM(y, m);
-    const bc = cl.map(c => { let dob = dim; if (c.joinDate) { const jd = new Date(c.joinDate); const ms2 = new Date(y, m - 1, 1); const me = new Date(y, m - 1, dim); if (jd > ms2 && jd <= me) dob = dim - jd.getDate() + 1; else if (jd > me) dob = 0; } const ha = dob === dim ? (c.ownerPaid || 0) : Math.round(((c.ownerPaid || 0) / dim) * dob * 100) / 100; return { ...c, from: fmtD(1, m, y), to: fmtD(dim, m, y), daysOnBoard: dob, daysOfMonth: dim, actualHA: ha, pob: 0, bonus: 0, pdeFees: 0, visaFees: 0, workingGear: 0, totalPayment: ha, billRemark: c.remark || "" }; }).filter(r => r.daysOnBoard > 0);
-    const bill = { id: `BILL-${String(bills.length + 1).padStart(3, "0")}`, client: sc, month: mo, from: fmtD(1, m, y), to: fmtD(dim, m, y), crew: bc, totalHA: Math.round(bc.reduce((s, c) => s + c.actualHA, 0) * 100) / 100, total: Math.round(bc.reduce((s, c) => s + c.totalPayment, 0) * 100) / 100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo: "840-096-0029-001674-501", accName: "Mahar Unity (Thailand) Company Limited", bankName: "Bangkok Bank", swift: "BKKBTHBK", remark: "Manning fee calculated upon 30 days, no overlap" } };
-    setBills([...bills, bill]); if (fsOk) fs.setD("bills", bill.id, bill); showT(`Bill ${bill.id} created`); };
+    const vName = bc.length > 0 ? (bc.every(c => c.vessel === bc[0].vessel) ? bc[0].vessel : "Multiple Vessels") : "No Vessel";
+    const bill = { id: `BILL-${String(bills.length + 1).padStart(3, "0")}`, client: sc, vessel: vName, month: mo, from: fmtD(1, m, y), to: fmtD(dim, m, y), crew: bc, totalHA: Math.round(bc.reduce((s, c) => s + c.actualHA, 0) * 100) / 100, total: Math.round(bc.reduce((s, c) => s + c.totalPayment, 0) * 100) / 100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo: "840-096-0029-001674-501", accName: "Mahar Unity (Thailand) Company Limited", bankName: "Bangkok Bank", swift: "BKKBTHBK", remark: "Manning fee calculated upon 30 days, no overlap" } };
+    setBills([...bills, bill]); if (fsOk) fs.setD("bills", bill.id, bill); showT(`Bill ${bill.id} created for ${sc}`); };
   const setSt = async (id, st) => { setBills(bills.map(b => b.id === id ? { ...b, status: st } : b)); if (fsOk) fs.upD("bills", id, { status: st }); showT(`${id} → ${st}`); };
   const fi = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 3, color: C.txt, padding: "3px 5px", fontSize: 10.5, outline: "none", width: 55, textAlign: "right" };
   const upB = (bid, field, val) => { setBills(bills.map(b => b.id === bid ? { ...b, bankInfo: { ...b.bankInfo, [field]: val } } : b)); };
-  const upL = (bid, cid, field, val) => { setBills(bills.map(b => { if (b.id !== bid) return b; const uc = (b.crew || []).map(c => { if (c.id !== cid) return c; const isNum = field !== "billRemark"; const u = { ...c, [field]: isNum ? (Number(val) || 0) : val }; if (field === "daysOnBoard") { u.actualHA = u.daysOnBoard === u.daysOfMonth ? (u.ownerPaid || 0) : Math.round(((u.ownerPaid || 0) / u.daysOfMonth) * u.daysOnBoard * 100) / 100; } u.totalPayment = (u.actualHA || 0) + (u.pob || 0) + (u.bonus || 0) + (u.pdeFees || 0) + (u.visaFees || 0) + (u.workingGear || 0); return u; }); const newTHA = Math.round(uc.reduce((s, c) => s + (c.actualHA || 0), 0) * 100) / 100; return { ...b, crew: uc, totalHA: newTHA, total: Math.round(uc.reduce((s, c) => s + (c.totalPayment || 0), 0) * 100) / 100 }; })); };
+  const remC = (bid, cid, name) => { setConfDel({ bid, cid, name }); };
+  const execRemC = async () => {
+    if (!confDel) return;
+    const { bid, cid } = confDel;
+    const ident = String(cid);
+    setBills(prev => {
+      const nb = prev.map(b => {
+        if (b.id !== bid) return b;
+        const nc = b.crew.filter(c => String(c.id || c.name) !== ident);
+        const tHA = Math.round(nc.reduce((s, c) => s + (c.actualHA || 0), 0) * 100) / 100;
+        const tot = Math.round(nc.reduce((s, c) => s + (c.totalPayment || 0), 0) * 100) / 100;
+        const updated = { ...b, crew: nc, totalHA: tHA, total: tot };
+        if (fsOk) fs.upD("bills", bid, { crew: nc, totalHA: tHA, total: tot });
+        return updated;
+      });
+      return nb;
+    });
+    setConfDel(null);
+    showT("Crew removed from bill");
+  };
+  const upL = (bid, cid, field, val) => {
+    const ident = String(cid);
+    setBills(prev => prev.map(b => {
+      if (b.id !== bid) return b;
+      const uc = (b.crew || []).map(c => {
+        if (String(c.id || c.name) !== ident) return c;
+        const isNum = field !== "billRemark";
+        const u = { ...c, [field]: isNum ? (Number(val) || 0) : val };
+        if (field === "daysOnBoard") {
+          u.actualHA = u.daysOnBoard === u.daysOfMonth ? (u.ownerPaid || 0) : Math.round(((u.ownerPaid || 0) / u.daysOfMonth) * u.daysOnBoard * 100) / 100;
+        }
+        u.totalPayment = (u.actualHA || 0) + (u.pob || 0) + (u.bonus || 0) + (u.pdeFees || 0) + (u.visaFees || 0) + (u.workingGear || 0);
+        return u;
+      });
+      const newTHA = Math.round(uc.reduce((s, c) => s + (c.actualHA || 0), 0) * 100) / 100;
+      const newTot = Math.round(uc.reduce((s, c) => s + (c.totalPayment || 0), 0) * 100) / 100;
+      const updated = { ...b, crew: uc, totalHA: newTHA, total: newTot };
+      if (fsOk) fs.upD("bills", bid, { crew: uc, totalHA: newTHA, total: newTot });
+      return updated;
+    }));
+  };
   const exportCSV = (b) => {
     const hdr = ['Name','Sign On','Wages/M','From','To','Days Board','Days/M','Actual HA','POB','Bonus','PDE','VISA','WG','Total','Remark'];
     const rows = (b.crew||[]).map(c => [c.name,c.joinDate||'',c.ownerPaid||0,c.from,c.to,c.daysOnBoard,c.daysOfMonth,(c.actualHA||0).toFixed(2),c.pob||0,c.bonus||0,c.pdeFees||0,c.visaFees||0,c.workingGear||0,(c.totalPayment||0).toFixed(2),c.billRemark||'']);
@@ -412,9 +453,77 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
   const exportPDF = (b) => { const trs=(b.crew||[]).map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.joinDate||''}</td><td>${c.ownerPaid||0}</td><td>${c.from}</td><td>${c.to}</td><td style="color:${c.daysOnBoard<c.daysOfMonth?'#F59E0B':'inherit'}">${c.daysOnBoard}</td><td>${c.daysOfMonth}</td><td>${(c.actualHA||0).toFixed(2)}</td><td>${c.pob||0}</td><td>${c.bonus||0}</td><td>${c.pdeFees||0}</td><td>${c.visaFees||0}</td><td>${c.workingGear||0}</td><td><b>${(c.totalPayment||0).toFixed(2)}</b></td><td>${c.billRemark||''}</td></tr>`).join(''); const html=`<!DOCTYPE html><html><head><title>${b.id}</title><style>*{font-family:'Inter',sans-serif;font-size:10px}body{margin:30px}h2{font-size:14px;margin-bottom:12px;color:#2563eb;border-bottom:1px solid #eee;padding-bottom:5px}.info{color:#666;margin-bottom:15px;display:flex;justify-content:space-between}table{border-collapse:collapse;width:100%;margin-bottom:20px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f9fafb;text-align:center;font-size:9px;font-weight:700;color:#374151}td{text-align:right}td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}.total td{font-weight:bold;background:#f3f4f6;color:#111827}.bank{margin-top:20px;padding:12px;border:1px solid #e5e7eb;font-size:9.5px;background:#f8fafc;border-radius:6px;line-height:1.6}@media print{body{margin:20px}}</style></head><body>${getLH()}<h2>${b.client} — ${b.month} MONTHLY BILL (${b.id})</h2><div class="info"><span><b>Period:</b> ${b.from} — ${b.to}</span><span><b>Crew:</b> ${(b.crew||[]).length} &nbsp;|&nbsp; <b>Date:</b> ${b.date||''}</span></div><table><thead><tr><th>#</th><th>Name</th><th>Sign On</th><th>Wages/M</th><th>From</th><th>To</th><th>Days Board</th><th>Days/M</th><th>Actual HA</th><th>POB</th><th>Bonus</th><th>PDE</th><th>VISA</th><th>WG</th><th>Total</th><th>Remark</th></tr></thead><tbody>${trs}</tbody><tfoot><tr class="total"><td colspan="14" style="text-align:right">TOTAL USD</td><td>${(b.total||0).toFixed(2)}</td><td></td></tr></tfoot></table><div class="bank"><b>BANK REMITTANCE DETAILS:</b><br/>Account No: ${b.bankInfo?.accNo} | Account Name: ${b.bankInfo?.accName} | Bank: ${b.bankInfo?.bankName} | SWIFT: <b>${b.bankInfo?.swift}</b><br/>REMARK: ${b.bankInfo?.remark || "Manning fee calculated upon 30 days, no overlap"}</div></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); };
   return <div>
     <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Generate Monthly Bill</h4><div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Client</label><select value={sc} onChange={e => setSc(e.target.value)} style={inp}><option value="">Select</option><option value="Mr.Xing & Mr.Zhong">Mr.Xing & Mr.Zhong</option><option value="CHH (All)">CHH (All)</option>{clients.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Month</label><div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}><input type="month" value={mo} onChange={e => setMo(e.target.value)} onClick={e => { try { e.target.showPicker() } catch(err){} }} style={{...inp, paddingRight: 24, cursor: "pointer" }} /><span style={{ position: "absolute", right: 8, pointerEvents: "none", color: C.txM, fontSize: 9 }}>▼</span></div></div><Btn onClick={gen} disabled={!sc}>Generate</Btn></div></div>
-    {!bills.length ? <div style={{ textAlign: "center", padding: 30, color: C.txD }}>No bills yet.</div> : bills.slice().reverse().map(b => <div key={b.id} style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontWeight: 700, color: C.acc, fontSize: 13 }}>{b.id}</span><Badge t={b.status} c={b.status === "Paid" ? "green" : b.status === "Sent" ? "blue" : "yellow"} /></div><div style={{ display: "flex", gap: 5 }}>{b.status === "Draft" && <Btn v="pri" onClick={() => setSt(b.id, "Sent")}>Send</Btn>}<Btn v="ghost" onClick={() => exportCSV(b)} s={{ fontSize: 11 }}>📊 Download Excel</Btn><Btn v="ghost" onClick={() => exportPDF(b)} s={{ fontSize: 11 }}>📄 PDF Version</Btn><Btn v="sec" onClick={() => setVb(vb === b.id ? null : b.id)}>{vb === b.id ? "Hide" : "Details"}</Btn></div></div>
+    {!bills.length ? <div style={{ textAlign: "center", padding: 30, color: C.txD }}>No bills yet.</div> : bills.slice().reverse().map(b => <div key={b.id} style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontWeight: 700, color: C.acc, fontSize: 13 }}>{b.id}</span><Badge t={b.status} c={b.status === "Paid" ? "green" : b.status === "Sent" ? "blue" : "yellow"} /></div>        <div style={{ display: "flex", gap: 5 }}>
+          {b.status === "Draft" && <Btn v="pri" onClick={() => setSt(b.id, "Sent")}>Send</Btn>}
+          {b.status === "Sent" && <Btn v="wrn" onClick={() => setSt(b.id, "Draft")}>Revise</Btn>}
+          <Btn v="ghost" onClick={() => exportCSV(b)} s={{ fontSize: 11 }}>📊 Download Excel</Btn>
+          <Btn v="ghost" onClick={() => exportPDF(b)} s={{ fontSize: 11 }}>📄 PDF Version</Btn>
+          <Btn v="sec" onClick={() => setVb(vb === b.id ? null : b.id)}>{vb === b.id ? "Hide" : "Details"}</Btn>
+        </div>
+      </div>
       <div style={{ background: C.bg, borderRadius: 6, padding: "8px 12px", border: `1px solid ${C.bdr}` }}><div style={{ fontSize: 13, fontWeight: 700, color: C.acc, marginBottom: 4 }}>{b.client} {(b.month || "").split("-").reverse().join("'")} BILL</div><div style={{ display: "flex", gap: 16, fontSize: 11, color: C.txM, flexWrap: "wrap" }}><span>Period: <b style={{ color: C.txt }}>{b.from} — {b.to}</b></span><span>Crew: <b style={{ color: C.txt }}>{(b.crew || []).length}</b></span><span>Total: <b style={{ color: C.ok, fontSize: 12.5 }}>${(b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} USD</b></span></div></div>
-      {vb === b.id && <div style={{ overflowX: "auto", borderRadius: 5, border: `1px solid ${C.bdr}`, marginTop: 8 }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}><thead><tr>{["Name", "Sign On Date", "Wages/M", "From", "To", "Days on Board", "Days of Month", "Actual HA", "POB", "Bonus", "PDE Fees", "VISA FEES", "WG", "Total Payment", "Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px" }}>{h}</th>)}</tr></thead><tbody>{(b.crew || []).map((c, i) => <tr key={c.id || i}><td style={{ ...tdS, fontWeight: 500 }}>{c.name}</td><td style={tdS}>{c.joinDate || "—"}</td><td style={{ ...tdS, textAlign: "right" }}>{(c.ownerPaid || 0).toLocaleString()}</td><td style={tdS}>{c.from || b.from}</td><td style={tdS}>{c.to || b.to}</td>{b.status === "Draft" ? <><td style={tdS}><input type="number" min="0" max={c.daysOfMonth} value={c.daysOnBoard ?? ""} onChange={e => upL(b.id, c.id, "daysOnBoard", e.target.value)} style={{ ...fi, color: c.daysOnBoard < c.daysOfMonth ? C.wrn : C.txt, fontWeight: c.daysOnBoard < c.daysOfMonth ? 700 : 400, width: 45 }} /></td><td style={{ ...tdS, textAlign: "center" }}>{c.daysOfMonth}</td><td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: C.inf }}>{(c.actualHA || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td style={tdS}><input type="number" value={c.pob || ""} onChange={e => upL(b.id, c.id, "pob", e.target.value)} style={fi} placeholder="0" /></td><td style={tdS}><input type="number" value={c.bonus || ""} onChange={e => upL(b.id, c.id, "bonus", e.target.value)} style={fi} placeholder="0" /></td><td style={tdS}><input type="number" value={c.pdeFees || ""} onChange={e => upL(b.id, c.id, "pdeFees", e.target.value)} style={fi} placeholder="0" /></td><td style={tdS}><input type="number" value={c.visaFees || ""} onChange={e => upL(b.id, c.id, "visaFees", e.target.value)} style={fi} placeholder="0" /></td><td style={tdS}><input type="number" value={c.workingGear || ""} onChange={e => upL(b.id, c.id, "workingGear", e.target.value)} style={fi} placeholder="0" /></td><td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td style={tdS}><input value={c.billRemark || ""} onChange={e => upL(b.id, c.id, "billRemark", e.target.value)} style={{ ...fi, width: 90, textAlign: "left" }} placeholder="—" /></td></> : <><td style={{ ...tdS, textAlign: "center", color: c.daysOnBoard < c.daysOfMonth ? C.wrn : C.txt, fontWeight: c.daysOnBoard < c.daysOfMonth ? 700 : 400 }}>{c.daysOnBoard}</td><td style={{ ...tdS, textAlign: "center" }}>{c.daysOfMonth}</td><td style={{ ...tdS, textAlign: "right", fontWeight: 600 }}>{(c.actualHA || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td style={{ ...tdS, textAlign: "right" }}>{c.pob || "—"}</td><td style={{ ...tdS, textAlign: "right" }}>{c.bonus || "—"}</td><td style={{ ...tdS, textAlign: "right" }}>{c.pdeFees || "—"}</td><td style={{ ...tdS, textAlign: "right" }}>{c.visaFees || "—"}</td><td style={{ ...tdS, textAlign: "right" }}>{c.workingGear || "—"}</td><td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td style={{ ...tdS, fontSize: 10, color: C.txD }}>{c.billRemark || "—"}</td></>}</tr>)}</tbody><tfoot><tr style={{ background: C.bg }}><td colSpan={7} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>TOTAL</td><td style={{ ...tdS, textAlign: "right", fontWeight: 700, color: C.acc }}>{(b.totalHA || b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td colSpan={5}></td><td style={{ ...tdS, textAlign: "right", fontWeight: 700, fontSize: 12, color: C.ok }}>{(b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td><td></td></tr></tfoot></table></div>}
+      {vb === b.id && <div style={{ overflowX: "auto", borderRadius: 5, border: `1px solid ${C.bdr}`, marginTop: 8 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
+          <thead>
+            <tr>
+              {b.status === "Draft" && <th style={{ ...thS, width: 30 }}></th>}
+              {["Name", "Sign On Date", "Wages/M", "From", "To", "Days on Board", "Days of Month", "Actual HA", "POB", "Bonus", "PDE Fees", "VISA FEES", "WG", "Total Payment", "Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px" }}>{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {(b.crew || []).map((c, i) => (
+              <tr key={c.id || i}>
+                {b.status === "Draft" && (
+                  <td style={{ ...tdS, textAlign: "center", padding: "2px 4px" }}>
+                    <Btn v="ghost" onClick={(e) => { e.stopPropagation(); remC(b.id, c.id || c.name, c.name); }} s={{ color: C.wrn, padding: "2px 5px", fontSize: 11, minWidth: "auto" }}>✕</Btn>
+                  </td>
+                )}
+                <td style={{ ...tdS, fontWeight: 500 }}>{c.name}</td>
+                <td style={tdS}>{c.joinDate || "—"}</td>
+                <td style={{ ...tdS, textAlign: "right" }}>{(c.ownerPaid || 0).toLocaleString()}</td>
+                <td style={tdS}>{c.from || b.from}</td>
+                <td style={tdS}>{c.to || b.to}</td>
+                {b.status === "Draft" ? (
+                  <>
+                    <td style={tdS}><input type="number" min="0" max={c.daysOfMonth} value={c.daysOnBoard ?? ""} onChange={e => upL(b.id, c.id || c.name, "daysOnBoard", e.target.value)} style={{ ...fi, color: c.daysOnBoard < c.daysOfMonth ? C.wrn : C.txt, fontWeight: c.daysOnBoard < c.daysOfMonth ? 700 : 400, width: 45 }} /></td>
+                    <td style={{ ...tdS, textAlign: "center" }}>{c.daysOfMonth}</td>
+                    <td style={{ ...tdS, textAlign: "right", fontWeight: 600, color: C.inf }}>{(c.actualHA || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={tdS}><input type="number" value={c.pob || ""} onChange={e => upL(b.id, c.id || c.name, "pob", e.target.value)} style={fi} placeholder="0" /></td>
+                    <td style={tdS}><input type="number" value={c.bonus || ""} onChange={e => upL(b.id, c.id || c.name, "bonus", e.target.value)} style={fi} placeholder="0" /></td>
+                    <td style={tdS}><input type="number" value={c.pdeFees || ""} onChange={e => upL(b.id, c.id || c.name, "pdeFees", e.target.value)} style={fi} placeholder="0" /></td>
+                    <td style={tdS}><input type="number" value={c.visaFees || ""} onChange={e => upL(b.id, c.id || c.name, "visaFees", e.target.value)} style={fi} placeholder="0" /></td>
+                    <td style={tdS}><input type="number" value={c.workingGear || ""} onChange={e => upL(b.id, c.id || c.name, "workingGear", e.target.value)} style={fi} placeholder="0" /></td>
+                    <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={tdS}><input value={c.billRemark || ""} onChange={e => upL(b.id, c.id || c.name, "billRemark", e.target.value)} style={{ ...fi, width: 90, textAlign: "left" }} placeholder="—" /></td>
+                  </>
+                ) : (
+                  <>
+                    <td style={{ ...tdS, textAlign: "center", color: c.daysOnBoard < c.daysOfMonth ? C.wrn : C.txt, fontWeight: c.daysOnBoard < c.daysOfMonth ? 700 : 400 }}>{c.daysOnBoard}</td>
+                    <td style={{ ...tdS, textAlign: "center" }}>{c.daysOfMonth}</td>
+                    <td style={{ ...tdS, textAlign: "right", fontWeight: 600 }}>{(c.actualHA || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right" }}>{c.pob || "—"}</td>
+                    <td style={{ ...tdS, textAlign: "right" }}>{c.bonus || "—"}</td>
+                    <td style={{ ...tdS, textAlign: "right" }}>{c.pdeFees || "—"}</td>
+                    <td style={{ ...tdS, textAlign: "right" }}>{c.visaFees || "—"}</td>
+                    <td style={{ ...tdS, textAlign: "right" }}>{c.workingGear || "—"}</td>
+                    <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, fontSize: 10, color: C.txD }}>{c.billRemark || "—"}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{ background: C.bg }}>
+              <td colSpan={b.status === "Draft" ? 8 : 7} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>TOTAL</td>
+              <td style={{ ...tdS, textAlign: "right", fontWeight: 700, color: C.acc }}>{(b.totalHA || b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td colSpan={5}></td>
+              <td style={{ ...tdS, textAlign: "right", fontWeight: 700, fontSize: 12, color: C.ok }}>{(b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>}
       {vb === b.id && b.bankInfo && <div style={{ background: C.bg, borderRadius: 5, padding: 12, border: `1px solid ${C.bdr}`, marginTop: 8, fontSize: 10.5 }}>
         <div style={{ fontWeight: 600, color: C.txM, marginBottom: 8 }}>BANK REMITTANCE {b.status === "Draft" && <span style={{ color: C.inf, fontWeight: 400, marginLeft: 8 }}>(Editable in Draft)</span>}</div>
         {b.status === "Draft" ? (
@@ -433,14 +542,26 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
         )}
       </div>}
     </div>)}
-  </div>;
+      {confDel && (
+        <Mod title="Confirm Removal" onClose={() => setConfDel(null)}>
+          <div style={{ padding: 10, textAlign: "center" }}>
+            <p style={{ marginBottom: 20, fontSize: 13 }}>Are you sure you want to remove <b>{confDel.name}</b> from this bill?</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <Btn v="sec" onClick={() => setConfDel(null)}>Cancel</Btn>
+              <Btn v="err" onClick={execRemC}>Remove Crew</Btn>
+            </div>
+          </div>
+        </Mod>
+      )}
+    </div>;
 }
 
 // ============== RECONCILIATION ==============
 function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
-  const [pf, setPf] = useState({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0] });
+  const [pf, setPf] = useState({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0], slipUrl: "" });
   const [res, setRes] = useState(null);
   const [ocrLd, setOcrLd] = useState(false);
+  const [upLd, setUpLd] = useState(false);
   const [ocrMsg, setOcrMsg] = useState("");
   const sent = bills.filter(b => b.status === "Sent");
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
@@ -450,8 +571,13 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
     if (!file) return;
     if (!pf.billId) { showT("Please select a Bill first to verify the amount against.", "wrn"); return; }
     
-    setOcrLd(true); setOcrMsg("Scanning slip..."); setRes(null);
+    setOcrLd(true); setUpLd(true); setOcrMsg("Uploading & Scanning slip..."); setRes(null);
     try {
+      const storagePath = `slips/${Date.now()}_${file.name}`;
+      const url = await fsUploadFile(file, storagePath);
+      if (url) setPf(prev => ({ ...prev, slipUrl: url }));
+      setUpLd(false);
+
       const { data: { text } } = await Tesseract.recognize(file, 'eng');
       const b = bills.find(x => x.id === pf.billId);
       if (!b) throw new Error("Bill not found.");
@@ -490,19 +616,30 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
   };
 
   const rec = async () => { const bill = bills.find(b => b.id === pf.billId); if (!bill) return; const amt = Number(pf.amount); const diff = amt - bill.total;
-    const pay = { id: `PAY-${String(payments.length + 1).padStart(3, "0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff };
+    const pay = { id: `PAY-${String(payments.length + 1).padStart(3, "0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff, slipUrl: pf.slipUrl };
     setPayments([...payments, pay]); if (fsOk) fs.setD("payments", pay.id, pay);
     if (Math.abs(diff) < 0.01) { setBills(bills.map(b => b.id === bill.id ? { ...b, status: "Paid" } : b)); if (fsOk) fs.upD("bills", bill.id, { status: "Paid" }); setRes({ ok: true, msg: `Matches ${bill.id}. PAID.` }); showT("Matched!"); }
     else { setRes({ ok: false, msg: `Mismatch on ${bill.id}.`, diff }); showT("Mismatch", "wrn"); }
-    setPf({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0] }); setOcrMsg(""); };
+    setPf({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0], slipUrl: "" }); setOcrMsg(""); };
     
   return <div>
     <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Record Payment & Bank Slip Verification</h4>{!sent.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No outstanding (Sent) bills.</div> : <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>1. Select Bill</label><select value={pf.billId} onChange={e => { const b = bills.find(x => x.id === e.target.value); setPf({ ...pf, billId: e.target.value, amount: b ? String(b.total) : "" }); setOcrMsg(""); }} style={inp}><option value="">Select</option>{sent.map(b => <option key={b.id} value={b.id}>{b.id}-{b.client}</option>)}</select></div>
     <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>2. Upload Bank Slip for OCR Validation</label><div style={{ display: "flex", gap: 8 }}><input type="file" accept="image/*" onChange={handleOcr} style={{...inp, flex: 1}} disabled={!pf.billId || ocrLd} /></div></div>
-    {ocrMsg && <div style={{ gridColumn: "1/-1", fontSize: 11, padding: 8, borderRadius: 5, background: ocrMsg.includes("✅") ? C.okB : (ocrMsg.includes("❌") ? C.wrnB : C.bg), color: ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.txM), border: `1px solid ${ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.bdr)}` }}>{ocrLd ? "Scanning Image..." : ocrMsg}</div>}
-    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>3. Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1", marginTop: 8 }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount}>Reconcile & Create Resulting Slips</Btn></div></div>}</div>
-    {res && <div style={{ background: res.ok ? C.okB : C.wrnB, border: `1px solid ${res.ok ? C.ok : C.wrn}33`, borderRadius: 7, padding: 12, marginBottom: 14 }}><div style={{ fontWeight: 600, color: res.ok ? C.ok : C.wrn }}>{res.ok ? "MATCH" : "MISMATCH"} - {res.msg}</div>{res.diff != null && !res.ok && <div style={{ fontWeight: 700, color: C.wrn, marginTop: 3 }}>Difference: ${Math.abs(res.diff).toLocaleString()}</div>}</div>}
-    {payments.length > 0 && <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["ID", "Bill", "Client", "Amount", "Ref", "Date", "Status"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead><tbody>{payments.slice().reverse().map(p => <tr key={p.id}><td style={tdS}><span style={{ fontWeight: 600, color: C.acc }}>{p.id}</span></td><td style={tdS}>{p.billId}</td><td style={tdS}>{p.client}</td><td style={tdS}>${(p.amount || 0).toLocaleString()}</td><td style={tdS}>{p.ref}</td><td style={tdS}>{p.date}</td><td style={tdS}><Badge t={p.match ? "Matched" : "Mismatch"} c={p.match ? "green" : "red"} /></td></tr>)}</tbody></table></div>}
+    {pf.slipUrl && <div style={{ gridColumn: "1/-1", marginBottom: 8 }}><div style={{ fontSize: 10, color: C.txM, marginBottom: 4 }}>Slip Preview:</div><img src={pf.slipUrl} alt="Slip Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: `1px solid ${C.bdr}`, cursor: "pointer" }} onClick={() => window.open(pf.slipUrl, "_blank")} /></div>}
+    {ocrMsg && <div style={{ gridColumn: "1/-1", fontSize: 11, padding: 8, borderRadius: 5, background: ocrMsg.includes("✅") ? C.okB : (ocrMsg.includes("❌") ? C.wrnB : C.bg), color: ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.txM), border: `1px solid ${ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.bdr)}` }}>{ocrLd ? (upLd ? "Uploading Attachment..." : "Scanning Image...") : ocrMsg}</div>}
+    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>3. Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1", marginTop: 8 }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount || upLd}>Reconcile & Create Resulting Slips</Btn></div></div>}</div>
+        {res && <div style={{ background: res.ok ? C.okB : C.wrnB, border: `1px solid ${res.ok ? C.ok : C.wrn}33`, borderRadius: 7, padding: 12, marginBottom: 14 }}>
+      <div style={{ fontWeight: 600, color: res.ok ? C.ok : C.wrn }}>{res.ok ? "MATCH" : "MISMATCH"} - {res.msg}</div>
+      {res.diff != null && !res.ok && (
+        <>
+          <div style={{ fontWeight: 700, color: C.wrn, marginTop: 3 }}>Difference: ${Math.abs(res.diff).toLocaleString()}</div>
+          <div style={{ fontSize: 10, color: C.txD, marginTop: 6, lineHeight: 1.4 }}>
+            <b>Tip:</b> If the owner intentionally paid a different amount (e.g. refused certain crew fees), please <b>Revise</b> the bill in the Monthly Billing tab to match the receipt before reconciling.
+          </div>
+        </>
+      )}
+    </div>}
+    {payments.length > 0 && <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["ID", "Bill", "Client", "Amount", "Ref", "Date", "Status", "Slip"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead><tbody>{payments.slice().reverse().map(p => <tr key={p.id}><td style={tdS}><span style={{ fontWeight: 600, color: C.acc }}>{p.id}</span></td><td style={tdS}>{p.billId}</td><td style={tdS}>{p.client}</td><td style={tdS}>${(p.amount || 0).toLocaleString()}</td><td style={tdS}>{p.ref}</td><td style={tdS}>{p.date}</td><td style={tdS}><Badge t={p.match ? "Matched" : "Mismatch"} c={p.match ? "green" : "red"} /></td><td style={tdS}>{p.slipUrl ? <Btn v="ghost" onClick={() => window.open(p.slipUrl, "_blank")} s={{ fontSize: 10, padding: "2px 6px" }}>👁️ View</Btn> : "—"}</td></tr>)}</tbody></table></div>}
   </div>;
 }
 
@@ -511,14 +648,25 @@ function SlipV({ crew, payments, slips, setSlips, showT, fs, fsOk }) {
   const [sp, setSp] = useState(""); const [sc, setSc] = useState([]);
   const mt = payments.filter(p => p.match); const py = payments.find(p => p.id === sp);
   const assignedCrewIds = py ? slips.filter(s => s.payId === sp).flatMap(s => s.crewIds || []) : [];
-  const cc = py ? crew.filter(c => c.client === py.client && !assignedCrewIds.includes(c.id)) : [];
-  const assignedCount = py ? (crew.filter(c => c.client === py.client).length - cc.length) : 0;
+  const ac = py ? (py.client === "Mr.Xing & Mr.Zhong" ? crew.filter(c => c.client === "XING" || c.client === "MR.ZHONG") : (py.client === "CHH (All)" ? crew.filter(c => c.client && c.client.startsWith("CHH")) : crew.filter(c => c.client === py.client))) : [];
+  const cc = ac.filter(c => !assignedCrewIds.includes(c.id));
+  const assignedCount = ac.length - cc.length;
   const tg = id => setSc(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
-  const up = () => { if (!sp || !sc.length) return; const sl = { id: `SLIP-${String(slips.length + 1).padStart(3, "0")}`, payId: sp, client: py.client, crewIds: [...sc], date: new Date().toISOString().split("T")[0] }; setSlips([...slips, sl]); if (fsOk) fs.setD("slips", sl.id, sl); showT(`Slip ${sl.id} created`); setSp(""); setSc([]); };
+  const up = () => { if (!sp || !sc.length) return; const sl = { id: `SLIP-${String(slips.length + 1).padStart(3, "0")}`, payId: sp, client: py.client, crewIds: [...sc], date: new Date().toISOString().split("T")[0] }; setSlips([...slips, sl]); if (fsOk) fs.setD("slips", sl.id, sl); showT(`Assignment ${sl.id} confirmed`); setSp(""); setSc([]); };
   const delSlip = async (id) => { setSlips(slips.filter(s => s.id !== id)); if (fsOk) await fs.delD("slips", id); showT(`Slip ${id} deleted`, "wrn"); };
   return <div>
-    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 600 }}>Upload Salary Slip</h4><p style={{ fontSize: 10.5, color: C.txD, margin: "0 0 10px" }}>Select matched payment & choose crew.</p>{!mt.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No matched payments yet.</div> : <><div style={{ marginBottom: 10 }}><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment</label><select value={sp} onChange={e => { setSp(e.target.value); setSc([]); }} style={{ ...inp, maxWidth: 400 }}><option value="">Select</option>{mt.map(p => <option key={p.id} value={p.id}>{p.id}-{p.client}</option>)}</select></div>{sp && <div style={{ fontSize: 10.5, color: C.inf, marginBottom: 8 }}>{assignedCount} crew already assigned to slips for this payment.</div>}{sp && cc.length === 0 && assignedCount > 0 && <div style={{ padding: 10, background: C.okB, color: C.ok, borderRadius: 5, fontSize: 11 }}>All crew members for this payment have been assigned to uploaded slips.</div>}{sp && cc.length > 0 && <><div style={{ display: "flex", gap: 4, marginBottom: 8 }}><Btn v="ghost" onClick={() => setSc(cc.map(c => c.id))}>All</Btn><Btn v="ghost" onClick={() => setSc([])}>Clear</Btn></div><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 5, marginBottom: 10, maxHeight: 300, overflow: "auto" }}>{cc.map(c => { const sel = sc.includes(c.id); return <div key={c.id} onClick={() => tg(c.id)} style={{ padding: "6px 8px", borderRadius: 5, cursor: "pointer", background: sel ? C.priG : C.bg, border: `1px solid ${sel ? C.pri : C.bdr}`, display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${sel ? C.pri : C.txD}`, background: sel ? C.pri : "transparent", flexShrink: 0 }} /><div><div style={{ fontSize: 11.5, fontWeight: 500 }}>{c.name}</div><div style={{ fontSize: 9.5, color: C.txD }}>{c.rank} · {c.vessel}</div></div></div>; })}</div><Btn onClick={up} disabled={!sc.length}>Upload ({sc.length} crew)</Btn></>}</>}</div>
+    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}><h4 style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 600 }}>Salary Assignment</h4><p style={{ fontSize: 10.5, color: C.txD, margin: "0 0 10px" }}>Assign verified payments to individual crew members.</p>{!mt.length ? <div style={{ color: C.txD, fontSize: 11.5 }}>No matched payments yet.</div> : <>      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment</label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <select value={sp} onChange={e => { setSp(e.target.value); setSc([]); }} style={{ ...inp, maxWidth: 400 }}>
+            <option value="">Select</option>
+            {mt.map(p => <option key={p.id} value={p.id}>{p.id}-{p.client}</option>)}
+          </select>
+          {py && py.slipUrl && <Btn v="ghost" onClick={() => window.open(py.slipUrl, "_blank")} s={{ fontSize: 10, padding: "5px 10px" }}>👁️ View Original Slip</Btn>}
+        </div>
+      </div>
+      {sp && <div style={{ fontSize: 10.5, color: C.inf, marginBottom: 8 }}>{assignedCount} crew already assigned to slips for this payment.</div>}{sp && cc.length === 0 && assignedCount > 0 && <div style={{ padding: 10, background: C.okB, color: C.ok, borderRadius: 5, fontSize: 11 }}>All crew members for this payment have been assigned.</div>}{sp && cc.length > 0 && <><div style={{ display: "flex", gap: 4, marginBottom: 8 }}><Btn v="ghost" onClick={() => setSc(cc.map(c => c.id))}>All</Btn><Btn v="ghost" onClick={() => setSc([])}>Clear</Btn></div><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 5, marginBottom: 10, maxHeight: 300, overflow: "auto" }}>{cc.map(c => { const sel = sc.includes(c.id); return <div key={c.id} onClick={() => tg(c.id)} style={{ padding: "6px 8px", borderRadius: 5, cursor: "pointer", background: sel ? C.priG : C.bg, border: `1px solid ${sel ? C.pri : C.bdr}`, display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 16, height: 16, borderRadius: 3, border: `2px solid ${sel ? C.pri : C.txD}`, background: sel ? C.pri : "transparent", flexShrink: 0 }} /><div><div style={{ fontSize: 11.5, fontWeight: 500 }}>{c.name}</div><div style={{ fontSize: 9.5, color: C.txD }}>{c.rank} · {c.vessel}</div></div></div>; })}</div><Btn onClick={up} disabled={!sc.length}>Confirm Assignment ({sc.length} crew)</Btn></>}</>}</div>
     {slips.length > 0 && slips.slice().reverse().map(sl => <div key={sl.id} style={{ background: C.card, borderRadius: 7, border: `1px solid ${C.bdr}`, padding: 12, marginBottom: 6 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontWeight: 700, color: C.acc }}>{sl.id}</span><div style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ fontSize: 10, color: C.txD }}>{sl.date}</span><button onClick={() => delSlip(sl.id)} style={{ background: "transparent", border: "none", color: C.wrn, cursor: "pointer", fontSize: 10 }}>Delete</button></div></div><div style={{ fontSize: 11.5, color: C.txM, marginBottom: 5 }}>Pay: {sl.payId} · {sl.client}</div><div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{(sl.crewIds || []).map(cid => { const c = crew.find(cr => cr.id === cid); return c ? <span key={cid} style={{ background: C.okB, color: C.ok, padding: "2px 6px", borderRadius: 3, fontSize: 10 }}>{c.name}</span> : null; })}</div></div>)}
   </div>;
 }
@@ -683,7 +831,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
     const sls = slips.filter(s => s.payId === pay.id);
     const cPays = paidPayments.filter(p => sls.some(s => s.id === p.slipId));
     if (!cPays.length) return null;
-    return { bill: b, payments: cPays, vessel: b.vessel || cPays[0]?.vessel || "Unknown" };
+    return { bill: b, payments: cPays, clientName: b.client };
   }).filter(Boolean);
 
   // Accountant: process slip → status "Pending Approval"
@@ -709,6 +857,8 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
         return {
           id: `CPAY-${String(crewPay.length + i + 1).padStart(3, "0")}`,
           crewId: cid, crewName: c.name, slipId: sl.id,
+          vessel: c.vessel || (bill && bill.vessel) || "Unknown",
+          slipUrl: (payment && payment.slipUrl) || "",
           total: actualPayment, bankAmount: actualPayment, cashAmount: 0,
           type: c.allotment?.type || "bank",
           status: "Pending Approval",
@@ -775,11 +925,14 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
         </div>
         <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr>{["Crew Name", "Slip", "Amount", "Type", "Date", "Action"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+            <thead><tr>{["Crew Name", "Slip", "Receipt", "Amount", "Type", "Date", "Action"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
             <tbody>{awaitingApproval.map(p => (
               <tr key={p.id} style={{ background: `${C.wrn}05` }}>
                 <td style={tdS}><span style={{ fontWeight: 600 }}>{p.crewName}</span></td>
                 <td style={tdS}>{p.slipId}</td>
+                <td style={tdS}>
+                  {p.slipUrl ? <Btn v="ghost" onClick={() => window.open(p.slipUrl, "_blank")} s={{ fontSize: 10, padding: "2px 6px" }}>👁️ Slip</Btn> : "—"}
+                </td>
                 <td style={{ ...tdS, fontWeight: 600, color: C.acc }}>${(p.total || 0).toLocaleString()}</td>
                 <td style={tdS}>{p.type}</td>
                 <td style={{ ...tdS, color: C.txD }}>{p.date}</td>
@@ -799,7 +952,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
         {payrolls.map(pr => (
           <div key={pr.bill.id} style={{ background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 6, padding: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 600 }}>{pr.vessel} · {pr.bill.month}</div>
+              <div style={{ fontSize: 11, fontWeight: 600 }}>{pr.clientName} · {pr.bill.month}</div>
               <div style={{ fontSize: 9, color: C.txD }}>{pr.payments.length} crew · Bill: {pr.bill.id}</div>
             </div>
             <Btn v="ghost" s={{ fontSize: 10 }} onClick={async () => {
@@ -822,7 +975,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
     </div>}
 
     {/* ── Payroll Calculation Modal ── */}
-    {calc && <Mod title={`Payroll Summary: ${calc.vessel} (${calc.bill.month})`} onClose={() => setCalc(null)} w={950}>
+    {calc && <Mod title={`Payroll Summary: ${calc.clientName} (${calc.bill.month})`} onClose={() => setCalc(null)} w={950}>
       <div style={{ marginBottom: 15, display: "flex", gap: 20, alignItems: "center", background: C.bg, padding: 10, borderRadius: 6, border: `1px solid ${C.bdr}` }}>
         <div>
           <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Exchange Rate (MMK/USD)</label>
@@ -836,7 +989,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
       <div style={{ overflowX: "auto", maxHeight: 400, border: `1px solid ${C.bdr}`, borderRadius: 6 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5 }}>
           <thead style={{ position: "sticky", top: 0, background: C.bg, zIndex: 1 }}>
-            <tr>{["Name", "Rank", "Remittance(USD)", "Bank Chg(MMK)", "Refunds(MMK)", "Ded.(MMK)", "Remittance(MMK)", "Type"].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+            <tr>{["Name", "Vessel", "Rank", "Remittance(USD)", "Bank Chg(MMK)", "Refunds(MMK)", "Ded.(MMK)", "Remittance(MMK)", "Type"].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {calc.payments.map(p => {
@@ -847,6 +1000,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
               
               return <tr key={p.id}>
                 <td style={tdS}><b>{c.name}</b></td>
+                <td style={tdS}>{c.vessel || "Unknown"}</td>
                 <td style={tdS}>{c.rank}</td>
                 <td style={{ ...tdS, fontWeight: 600 }}>${(p.total || 0).toLocaleString()}</td>
                 <td style={tdS}><input type="number" value={ex.bc} onChange={e => updateExtra("bc", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>

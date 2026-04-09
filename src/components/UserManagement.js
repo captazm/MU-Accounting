@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { C, Btn, Badge } from "./UI";
-import { fetchAllUsers, createUser, toggleUserActive } from "../services/auth";
+import { fetchAllUsers, createUser, toggleUserActive, resetUserPassword } from "../services/auth";
 
 const inp = {
   background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 6,
@@ -61,6 +61,16 @@ export default function UserManagement({ currentUser, showT }) {
     if (ok) {
       setUsers(users.map(u => u.uid === uid ? { ...u, active: !currentActive } : u));
       showT(`User ${!currentActive ? "activated" : "disabled"}`);
+    }
+  };
+
+  const handleReset = async (email) => {
+    if (!window.confirm(`${email} ထံသို့ Password reset link ပို့ရန် သေချာပါသလား?`)) return;
+    try {
+      await resetUserPassword(email);
+      showT("Password reset link ပို့လိုက်ပါပြီ။ Email ထဲမှာ စစ်ဆေးပါ။", "ok");
+    } catch (err) {
+      showT("Error: " + err.message, "err");
     }
   };
 
@@ -151,12 +161,18 @@ export default function UserManagement({ currentUser, showT }) {
                       <Badge t={u.active !== false ? "Active" : "Disabled"} c={u.active !== false ? "green" : "red"} />
                     </td>
                     <td style={tdS}>
-                      {!isMe && (
-                        <Btn v={u.active !== false ? "err" : "ok"} s={{ fontSize: 10, padding: "3px 9px" }}
-                          onClick={() => handleToggle(u.uid, u.active !== false)}>
-                          {u.active !== false ? "Disable" : "Enable"}
+                      <div style={{ display: "flex", gap: 5 }}>
+                        {!isMe && (
+                          <Btn v={u.active !== false ? "err" : "ok"} s={{ fontSize: 10, padding: "3px 9px" }}
+                            onClick={() => handleToggle(u.uid, u.active !== false)}>
+                            {u.active !== false ? "Disable" : "Enable"}
+                          </Btn>
+                        )}
+                        <Btn v="sec" s={{ fontSize: 10, padding: "3px 9px", border: `1px solid ${C.bdr}` }}
+                          onClick={() => handleReset(u.email)}>
+                          Reset Pass
                         </Btn>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 );

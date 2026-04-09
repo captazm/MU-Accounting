@@ -20,10 +20,7 @@ const getLH = () => `
       </div>
     </div>
     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-      <div style="display: flex; align-items: center; gap: 8px; border: 1.5px solid #1e3a8a; border-radius: 4px; overflow: hidden; height: 36px; background: white;">
-        <div style="background: #1e3a8a; color: white; padding: 0 8px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 800;">ANAB</div>
-        <div style="padding: 0 10px; color: #1e3a8a; font-size: 9px; font-weight: 800; text-align: center; line-height: 1.1;">ISO 9001:2015<br/><span style="font-size: 7px; font-weight: 400;">Certified</span></div>
-      </div>
+      <img src="/ABS logo.png" style="height: 70px; width: auto;" alt="ABS Logo" />
     </div>
   </div>`;
 
@@ -46,7 +43,7 @@ const downloadCSV = (rows, filename) => {
   }, 100);
 };
 
-export default function App() {
+function App() {
   const [tab, setTab] = useState("dashboard");
   const [crew, setCrew] = useState([]);
   const [bills, setBills] = useState([]);
@@ -145,6 +142,9 @@ export default function App() {
             else if (h === "office") obj.of = Number(val) || 0;
             else if (h === "remark") obj.rm = val;
             else if (h === "manningfees") obj.mf = Number(val) || 0;
+            else if (h === "leavepay") obj.lp = Number(val) || 0;
+            else if (h === "paiddepfees") obj.pdf = Number(val) || 0;
+            else if (h === "balancedepfees") obj.bdf = Number(val) || 0;
           });
           
           return {
@@ -160,8 +160,12 @@ export default function App() {
             office: obj.of || 0,
             remark: obj.rm || "",
             manningFees: obj.mf || 0,
+            leavePay: obj.lp || 0,
+            paidDepFees: obj.pdf || 0,
+            balanceDepFees: obj.bdf || 0,
             status: "Onboard",
-            allotment: { type: "bank", bankName: "", account: "", split: 100 },
+            banks: [{ id: "B1", bankName: obj.bn || "", bankAccNo: obj.ba || "", bankAccName: obj.nm || obj.ban || "", label: "Primary" }],
+            allotmentType: "bank",
             createdAt: new Date().toISOString()
           };
         });
@@ -191,14 +195,123 @@ export default function App() {
     { id: "crew",      label: "Crew Registry", icon: "👥" },
     { id: "billing",   label: "Monthly Billing", icon: "📄" },
     { id: "reconcile", label: "Reconciliation", icon: "🔍" },
-    { id: "slip",      label: "Salary Assignment", icon: "📋" },
     { id: "dist",      label: "Payment Dist.", icon: "💸" },
     { id: "board",     label: "Status Board", icon: "📌" },
     { id: "users",     label: "User Management", icon: "🔐", adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
   const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc, getD: fsGetDoc };
-  const p = { crew, setCrew, bills, setBills, payments, setPayments, slips, setSlips, crewPay, setCrewPay, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, setTab, showT, vessels, clients, fs, fsOk, selectedMonth, setSelectedMonth, userRole, bulkUpload, migrating };
+  // ── Distribution & Payroll Helpers ────────────────────────────────────
+  const genPayrollFromBill = async (bill, slipUrl) => {
+    if (!bill.crew || !bill.crew.length) return;
+    const items = [];
+    for (const c of bill.crew) {
+      const p = {
+        id: `P${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        slipId: bill.id,
+        crewId: c.crewId,
+        crewName: c.name,
+        rank: c.rank,
+        vessel: c.vessel || bill.vessel,
+        client: c.client || bill.client,
+        total: c.netCrewPay || c.salary || 0,
+        status: "Pending", 
+        month: bill.month,
+        type: c.allotmentType || "bank",
+        bankName: c.bankName || "",
+        bankAccNo: c.bankAccNo || "",
+        bankAccName: c.bankAccName || "",
+        signedSlipUrl: "",
+        date: new Date().toISOString().split("T")[0],
+        createdAt: new Date().toISOString()
+      };
+      items.push(p);
+      if (fsOk) await fs.setD("crewPayments", p.id, p);
+    }
+    setCrewPay(prev => [...prev.filter(x => x.slipId !== bill.id), ...items]);
+  };
+
+  const createManualPayment = async (data) => {
+    const pay = {
+      id: `CPAY-MANUAL-${Date.now()}`,
+      crewId: data.crewId, crewName: data.crewName,
+      slipId: "AD-HOC", vessel: data.vessel,
+      total: Number(data.total), 
+      type: "bank", bankName: data.bankName, bankAccNo: data.bankAccNo, bankAccName: data.bankAccName,
+      status: "Pending", date: new Date().toISOString().split("T")[0],
+      month: data.month || selectedMonth
+    };
+    setCrewPay(prev => [...prev, pay]);
+    if (fsOk) await fs.setD("crewPayments", pay.id, pay);
+    showT("Manual payment created.");
+  };
+
+  const approve = async (id) => {
+    const up = { status: "Approved", approvedAt: new Date().toISOString() };
+    setCrewPay(prev => prev.map(x => x.id === id ? { ...x, ...up } : x));
+    if (fsOk) await fs.upD("crewPayments", id, up);
+    showT("Payment Approved ✓");
+  };
+
+  const markProcessed = async (id, slipUrl = "") => {
+    const up = { status: "Processed", processedAt: new Date().toISOString(), signedSlipUrl: slipUrl };
+    setCrewPay(prev => prev.map(x => x.id === id ? { ...x, ...up } : x));
+    if (fsOk) await fs.upD("crewPayments", id, up);
+    showT("Payment Processed & Signed ✓");
+  };
+
+  const markPaid = async (id) => {
+    const p = crewPay.find(x => x.id === id);
+    if (!p) return;
+    const up = { status: "Paid", paidAt: new Date().toISOString() };
+    setCrewPay(prev => prev.map(x => x.id === id ? { ...x, ...up } : x));
+    if (fsOk) {
+      await fs.upD("crewPayments", id, up);
+      // Update crew registry if this was a standard payroll with deductions
+      if (p.crewId && (p.depFeeDed || p.actLeavePay)) {
+        const c = crew.find(cr => String(cr.id) === String(p.crewId));
+        if (c) {
+          const upd = {
+            paidDepFees: (c.paidDepFees || 0) + (p.depFeeDed || 0),
+            balanceDepFees: Math.max(0, (c.balanceDepFees || 0) - (p.depFeeDed || 0)),
+            accumulatedLeavePay: (c.accumulatedLeavePay || 0) + (p.actLeavePay || 0)
+          };
+          await fs.upD("crew", c.id, upd);
+        }
+      }
+    }
+    showT("Payment Verified & Paid ✓", "ok");
+  };
+
+  const printPayslip = (p) => {
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>Payslip - ${p.crewName}</title><style>body{font-family:sans-serif;padding:30px;line-height:1.5;} .h{font-weight:bold;margin-top:15px; border-bottom:1px solid #eee;}</style></head>
+      <body>
+        <h2 style="margin-bottom:0">MAHAR UNITY SHIPPING</h2>
+        <p style="font-size:12px;margin-top:5px;color:#666">INDIVIDUAL PAYROLL SLIP</p>
+        <div class="h">CREW DETAILS</div>
+        <p>Name: <b>${p.crewName}</b><br/>ID: ${p.crewId || "—"}<br/>Vessel: ${p.vessel}</p>
+        <div class="h">PAYMENT SUMMARY</div>
+        <p>Slip ID: ${p.slipId}<br/>Date: ${p.date}</p>
+        <div style="background:#f9f9f9;padding:15px;border:1px solid #ddd;margin-top:10px">
+          <table style="width:100%">
+            <tr><td><b>Total Net Pay:</b></td><td style="text-align:right"><b>$${(p.total || 0).toLocaleString()}</b></td></tr>
+            <tr><td style="font-size:12px;color:#666">Deductions (Dep Fees):</td><td style="text-align:right;font-size:12px;color:#666">-$${(p.depFeeDed || 0).toLocaleString()}</td></tr>
+            <tr><td style="font-size:12px;color:#666">Accumulated Leave Pay:</td><td style="text-align:right;font-size:12px;color:#666">+$${(p.actLeavePay || 0).toLocaleString()}</td></tr>
+          </table>
+        </div>
+        <div class="h">BANKING DETAILS</div>
+        <p>Bank: ${p.bankName}<br/>Account: ${p.bankAccNo}<br/>Beneficiary: ${p.bankAccName}</p>
+        <div style="margin-top:60px;display:flex;justify-content:space-between">
+          <div style="text-align:center;width:150px;border-top:1px solid #000;padding-top:10px">Accountant</div>
+          <div style="text-align:center;width:150px;border-top:1px solid #000;padding-top:10px">Crew Signature</div>
+        </div>
+      </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  };
+
+  const p = { crew, setCrew, bills, setBills, payments, setPayments, slips, setSlips, crewPay, setCrewPay, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, setTab, showT, vessels, clients, fs, fsOk, selectedMonth, setSelectedMonth, userRole, bulkUpload, migrating, genPayrollFromBill, createManualPayment, approve, markProcessed, markPaid, printPayslip };
 
   const Spinner = ({ msg }) => (<div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: C.txt, fontFamily: "sans-serif" }}><div style={{ width: 50, height: 50, borderRadius: 12, background: `linear-gradient(135deg,${C.pri},${C.inf})`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#fff", fontSize: 22, fontWeight: 700 }}>M</div><div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>MAHAR UNITY SRPS</div><div style={{ color: C.txM, fontSize: 12 }}>{msg || "Loading..."}</div></div>);
 
@@ -218,7 +331,6 @@ export default function App() {
           {nav.map(n => <button key={n.id} onClick={() => setTab(n.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: sb ? "8px 9px" : "8px 10px", borderRadius: 6, border: "none", cursor: "pointer", transition: "all 0.15s", background: tab === n.id ? C.priG : "transparent", color: tab === n.id ? C.acc : C.txM, fontSize: 12, fontWeight: tab === n.id ? 600 : 400, textAlign: "left", borderLeft: tab === n.id ? `2px solid ${C.pri}` : "2px solid transparent", justifyContent: sb ? "flex-start" : "center" }}>{sb ? n.label : n.icon}</button>)}
         </nav>
         {sb && <div style={{ padding: "8px 10px", borderTop: `1px solid ${C.bdr}`, fontSize: 9.5 }}>
-          {/* User info */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, padding: "5px 6px", background: C.card, borderRadius: 6, border: `1px solid ${C.bdr}` }}>
             <div style={{ width: 22, height: 22, borderRadius: "50%", background: userRole === "admin" ? `linear-gradient(135deg,${C.inf},${C.pri})` : `linear-gradient(135deg,${C.ok},${C.pri})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{(userProfile?.displayName || "U")[0].toUpperCase()}</div>
             <div style={{ overflow: "hidden", flex: 1 }}>
@@ -242,8 +354,7 @@ export default function App() {
           {tab === "crew" && <CrewV {...p} />}
           {tab === "billing" && <BillV {...p} />}
           {tab === "reconcile" && <ReconV {...p} />}
-          {tab === "slip" && <SlipV {...p} />}
-          {tab === "dist" && <DistV {...p} />}
+          {tab === "dist" && <DistV {...p} onManualPayment={p.createManualPayment} />}
           {tab === "users" && userRole === "admin" && <UserManagement currentUser={currentUser} showT={showT} />}
         </div>
       </div>
@@ -368,13 +479,110 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
       <span style={{ fontSize: 11.5, color: C.txM }}>{filtered.length}/{crew.length} crew members</span>
       <div style={{ display: "flex", gap: 8 }}>
         <input type="file" id="csv-upload" accept=".csv" style={{ display: "none" }} onChange={(e) => bulkUpload(e.target.files[0])} />
+        <Btn v="ghost" s={{ color: C.err }} onClick={async () => {
+          if(!window.confirm("Are you sure you want to clear ALL existing remarks for all crew?")) return;
+          if (fs) {
+            for (const c of crew) {
+              if (c.remark) await fs.upD("crew", c.id, { remark: "" });
+            }
+            showT("All remarks cleared successfully");
+          }
+        }}>Clear Remarks</Btn>
         <Btn v="sec" onClick={() => document.getElementById("csv-upload").click()} disabled={migrating}>{migrating ? "Uploading..." : "Bulk CSV Import"}</Btn>
-        <Btn onClick={() => { setForm({ id: `C${String(crew.length + 1).padStart(3, "0")}`, no: crew.length + 1, name: "", rank: "", ownerPaid: 0, vessel: "", client: "", joinDate: "", salary: 0, office: 0, remark: "", manningFees: 0, status: "Onboard", allotmentType: "bank", bankName: "", bankAccNo: "", bankAccName: "" }); setModal("add"); }}>+ Add New</Btn>
+        <Btn onClick={() => { setForm({ id: `C${String(crew.length + 1).padStart(3, "0")}`, no: crew.length + 1, name: "", rank: "", ownerPaid: 0, vessel: "", client: "", joinDate: "", salary: 0, office: 0, paidDepFees: 0, balanceDepFees: 0, manningFees: 0, accumulatedLeavePay: 0, remark: "", status: "Onboard", allotmentType: "bank", banks: [{ id: "B1", bankName: "", bankAccNo: "", bankAccName: "", label: "Primary" }], bankName: "", bankAccNo: "", bankAccName: "" }); setModal("add"); }}>+ Add New</Btn>
       </div>
     </div>
     <Filt {...{ fN, setFN, fV, setFV, fC, setFC, vessels, clients }} />
-    <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["No", "ID", "Name", "Rank", "Vessel", "Client", "Join", "OwnerPaid", "Salary", "Office", "Manning", "Remark", "Bank", "Acc No", "Acc Name", "PayType", ""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead><tbody>{filtered.map(c => <tr key={c.id || c.no}><td style={tdS}>{c.no}</td><td style={tdS}><span style={{ color: C.acc, fontWeight: 600 }}>{c.id}</span></td><td style={tdS}><span style={{ fontWeight: 500 }}>{c.name}</span></td><td style={tdS}>{c.rank}</td><td style={{ ...tdS, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{c.vessel || "—"}</td><td style={tdS}>{c.client}</td><td style={tdS}>{c.joinDate || "—"}</td><td style={{ ...tdS, fontWeight: 600, color: C.acc }}>${(c.ownerPaid || 0).toLocaleString()}</td><td style={tdS}>${(c.salary || 0).toLocaleString()}</td><td style={tdS}>${(c.office || 0).toLocaleString()}</td><td style={tdS}>${c.manningFees || 0}</td><td style={{ ...tdS, fontSize: 10, color: C.txD, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }}>{c.remark || "—"}</td><td style={tdS}>{c.bankName || "—"}</td><td style={tdS}>{c.bankAccNo || "—"}</td><td style={tdS}>{c.bankAccName || "—"}</td><td style={{ ...tdS, textTransform: "capitalize" }}>{c.allotmentType || "bank"}</td><td style={tdS}><Btn v="ghost" onClick={() => { setForm({ ...c }); setModal("edit"); }}>Edit</Btn></td></tr>)}</tbody></table></div>
-    {(modal === "add" || modal === "edit") && <Mod title={modal === "add" ? "Add Crew" : "Edit Crew"} onClose={() => setModal(null)}><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>{[["ID", "id", true], ["Name *", "name"], ["Rank", "rank"], ["Vessel", "vessel"], ["Client", "client"], ["Join Date", "joinDate"], ["Owner Paid", "ownerPaid"], ["Salary", "salary"], ["Office", "office"], ["Manning", "manningFees"], ["Remark", "remark"], ["Bank Name", "bankName"], ["Bank Acc No", "bankAccNo"], ["Bank Acc Name", "bankAccName"]].map(([l, k, d]) => <div key={k}><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>{l}</label>{k === "bankName" ? <select value={form[k] ?? ""} onChange={e => setForm({ ...form, [k]: e.target.value })} style={inp}><option value="">Select Bank</option>{["KBZ", "AYA", "A Bank", "CB", "MAB", "Yoma", "Kpay", "Aya Pay"].map(b => <option key={b} value={b}>{b}</option>)}</select> : <input value={form[k] ?? ""} disabled={d} onChange={e => setForm({ ...form, [k]: e.target.value })} style={{ ...inp, opacity: d ? 0.5 : 1 }} />}</div>)}<div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment Type</label><select value={form.allotmentType || "bank"} onChange={e => setForm({ ...form, allotmentType: e.target.value })} style={inp}><option value="bank">Bank</option><option value="cash">Cash (Office)</option></select></div></div><div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 14 }}><Btn v="sec" onClick={() => setModal(null)}>Cancel</Btn><Btn v="ok" onClick={save}>Save</Btn></div></Mod>}
+    <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr>{["No", "ID", "Name", "Rank", "Vessel", "Client", "Join", "OwnerPaid", "Salary", "DEP FEES", "Paid Dep", "Bal Dep", "Manning", "Leave Pay(Acc)", "Bank", "Acc No", "Acc Name", "Type", "Remark", ""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead><tbody>{filtered.map(c => <tr key={c.id || c.no}><td style={tdS}>{c.no}</td><td style={tdS}><span style={{ color: C.acc, fontWeight: 600 }}>{c.id}</span></td><td style={tdS}><span style={{ fontWeight: 500 }}>{c.name}</span></td><td style={tdS}>{c.rank}</td><td style={{ ...tdS, maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{c.vessel || "—"}</td><td style={tdS}>{c.client}</td><td style={tdS}>{c.joinDate || "—"}</td><td style={{ ...tdS, fontWeight: 600, color: C.acc }}>${(c.ownerPaid || 0).toLocaleString()}</td><td style={tdS}>${(c.salary || 0).toLocaleString()}</td><td style={tdS}>${(c.office || 0).toLocaleString()}</td><td style={tdS}>${(c.paidDepFees || 0).toLocaleString()}</td><td style={tdS}>${(c.balanceDepFees || 0).toLocaleString()}</td><td style={tdS}>${(c.manningFees || 0).toLocaleString()}</td><td style={tdS}>${(c.accumulatedLeavePay || 0).toLocaleString()}</td><td style={tdS}>{c.bankName || "—"}</td><td style={tdS}>{c.bankAccNo || "—"}</td><td style={tdS}>{c.bankAccName || "—"}</td><td style={{ ...tdS, textTransform: "capitalize" }}>{c.allotmentType || "bank"}</td><td style={{ ...tdS, fontSize: 10, color: C.txD, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }}>{c.remark || "—"}</td><td style={tdS}><Btn v="ghost" onClick={() => { setForm({ ...c }); setModal("edit"); }}>Edit</Btn></td></tr>)}</tbody></table></div>
+    {(modal === "add" || modal === "edit") && <Mod title={modal === "add" ? "Add Crew" : "Edit Crew"} onClose={() => setModal(null)}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {[
+          ["ID", "id", true], ["Name *", "name"], ["Rank", "rank"], ["Vessel", "vessel"], 
+          ["Client", "client"], ["Join Date", "joinDate"], ["Owner Paid", "ownerPaid"], 
+          ["Salary", "salary"], ["DEP FEES", "office"], ["Paid Dep Fees", "paidDepFees"],
+          ["Bal Dep Fees", "balanceDepFees"], ["Manning Fees", "manningFees"], 
+          ["Leave Pay (Acc)", "accumulatedLeavePay"], ["Remark", "remark"]
+        ].map(([l, k, d]) => (
+          <div key={k}>
+            <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>{l}</label>
+            <input 
+              value={form[k] ?? ""} 
+              disabled={d} 
+              type={["ownerPaid", "salary", "office", "paidDepFees", "balanceDepFees", "manningFees", "accumulatedLeavePay"].includes(k) ? "number" : "text"}
+              onChange={e => setForm({ ...form, [k]: e.target.value })} 
+              style={{ ...inp, opacity: d ? 0.5 : 1 }} 
+            />
+          </div>
+        ))}
+        <div>
+          <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment Type</label>
+          <select value={form.allotmentType || "bank"} onChange={e => setForm({ ...form, allotmentType: e.target.value })} style={inp}>
+            <option value="bank">Bank</option>
+            <option value="cash">Cash (Office)</option>
+          </select>
+        </div>
+      </div>
+
+      {form.allotmentType === "bank" && (
+        <div style={{ marginTop: 15, padding: 10, background: C.bgS, borderRadius: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Registered Bank Accounts</span>
+            <Btn v="sec" size="sm" onClick={() => setForm({ 
+              ...form, 
+              banks: [...(form.banks || []), { id: `B${(form.banks?.length || 0) + 1}`, bankName: "", bankAccNo: "", bankAccName: form.name, label: "" }] 
+            })}>+ Add Bank</Btn>
+          </div>
+          {(form.banks || []).map((b, i) => (
+            <div key={b.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1.5fr 80px 30px", gap: 6, marginBottom: 8, alignItems: "end" }}>
+              <div>
+                <label style={{ fontSize: 9, color: C.txD }}>Bank Name</label>
+                <select value={b.bankName || ""} onChange={e => {
+                  const nb = [...form.banks];
+                  nb[i].bankName = e.target.value;
+                  setForm({ ...form, banks: nb });
+                }} style={{ ...inp, height: 32, fontSize: 11 }}>
+                  <option value="">Select</option>
+                  {["KBZ", "AYA", "A Bank", "CB", "MAB", "Yoma", "Kpay", "Aya Pay", "Other"].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 9, color: C.txD }}>Acc No</label>
+                <input value={b.bankAccNo || ""} onChange={e => {
+                  const nb = [...form.banks];
+                  nb[i].bankAccNo = e.target.value;
+                  setForm({ ...form, banks: nb });
+                }} style={{ ...inp, height: 32, fontSize: 11 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 9, color: C.txD }}>Acc Name</label>
+                <input value={b.bankAccName || ""} onChange={e => {
+                  const nb = [...form.banks];
+                  nb[i].bankAccName = e.target.value;
+                  setForm({ ...form, banks: nb });
+                }} style={{ ...inp, height: 32, fontSize: 11 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 9, color: C.txD }}>Label (e.g. Wife)</label>
+                <input value={b.label || ""} placeholder="Primary" onChange={e => {
+                  const nb = [...form.banks];
+                  nb[i].label = e.target.value;
+                  setForm({ ...form, banks: nb });
+                }} style={{ ...inp, height: 32, fontSize: 11 }} />
+              </div>
+              <Btn v="ghost" size="sm" onClick={() => {
+                const nb = form.banks.filter((_, idx) => idx !== i);
+                setForm({ ...form, banks: nb });
+              }} style={{ color: C.err, padding: 0 }}>✕</Btn>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 14 }}>
+        <Btn v="sec" onClick={() => setModal(null)}>Cancel</Btn>
+        <Btn v="ok" onClick={save}>Save</Btn>
+      </div>
+    </Mod>}
   </div>;
 }
 
@@ -385,13 +593,37 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none" };
   const getDIM = (y, m) => new Date(y, m, 0).getDate();
   const fmtD = (d, m, y) => { const ms = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]; return `${d}.${ms[m - 1]}.${y}`; };
-  const gen = async () => { if (!sc) return; 
+  const gen = async () => { 
+    if (!sc) return; 
     let cl = crew.filter(c => c.client === sc); 
     if (sc === "Mr.Xing & Mr.Zhong") { cl = crew.filter(c => c.client === "XING" || c.client === "MR.ZHONG"); }
     else if (sc === "CHH (All)") { cl = crew.filter(c => c.client && c.client.startsWith("CHH")); }
+    if (!cl.length) return; 
+    const [y, m] = mo.split("-").map(Number); 
+    const dim = getDIM(y, m);
+    const bc = cl.map(c => { 
+      let dob = dim; 
+      if (c.joinDate) { 
+        const jd = new Date(c.joinDate); 
+        const ms2 = new Date(y, m - 1, 1); 
+        const me = new Date(y, m - 1, dim); 
+        if (jd > ms2 && jd <= me) dob = dim - jd.getDate() + 1; 
+        else if (jd > me) dob = 0; 
+      } 
+      const isOfc = /master|chief|officer|engineer|cadet/i.test(c.rank || "");
+      const lpPerc = isOfc ? 0.05 : 0.10;
+      const ha = dob === dim ? (c.ownerPaid || 0) : Math.round(((c.ownerPaid || 0) / dim) * dob * 100) / 100; 
+      const actManning = dob === dim ? (c.manningFees || 0) : Math.round(((c.manningFees || 0) / dim) * dob * 100) / 100;
+      const maxLp = (c.salary || 0) * lpPerc;
+      const actLeavePay = dob === dim ? maxLp : Math.round((maxLp / dim) * dob * 100) / 100;
+      const depFeeDed = c.balanceDepFees > 0 ? c.balanceDepFees : 0;
+      const netCrewPay = Math.max(0, ha - actManning - actLeavePay - depFeeDed);
+      return { ...c, from: fmtD(1, m, y), to: fmtD(dim, m, y), daysOnBoard: dob, daysOfMonth: dim, actualHA: ha, pob: 0, bonus: 0, pdeFees: 0, visaFees: 0, workingGear: 0, totalPayment: ha, actManning, actLeavePay, depFeeDed, netCrewPay, billRemark: c.remark || "" }; 
+    }).filter(r => r.daysOnBoard > 0);
     const vName = bc.length > 0 ? (bc.every(c => c.vessel === bc[0].vessel) ? bc[0].vessel : "Multiple Vessels") : "No Vessel";
     const bill = { id: `BILL-${String(bills.length + 1).padStart(3, "0")}`, client: sc, vessel: vName, month: mo, from: fmtD(1, m, y), to: fmtD(dim, m, y), crew: bc, totalHA: Math.round(bc.reduce((s, c) => s + c.actualHA, 0) * 100) / 100, total: Math.round(bc.reduce((s, c) => s + c.totalPayment, 0) * 100) / 100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo: "840-096-0029-001674-501", accName: "Mahar Unity (Thailand) Company Limited", bankName: "Bangkok Bank", swift: "BKKBTHBK", remark: "Manning fee calculated upon 30 days, no overlap" } };
-    setBills([...bills, bill]); if (fsOk) fs.setD("bills", bill.id, bill); showT(`Bill ${bill.id} created for ${sc}`); };
+    setBills([...bills, bill]); if (fsOk) fs.setD("bills", bill.id, bill); showT(`Bill ${bill.id} created for ${sc}`); 
+  };
   const setSt = async (id, st) => { setBills(bills.map(b => b.id === id ? { ...b, status: st } : b)); if (fsOk) fs.upD("bills", id, { status: st }); showT(`${id} → ${st}`); };
   const fi = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 3, color: C.txt, padding: "3px 5px", fontSize: 10.5, outline: "none", width: 55, textAlign: "right" };
   const upB = (bid, field, val) => { setBills(bills.map(b => b.id === bid ? { ...b, bankInfo: { ...b.bankInfo, [field]: val } } : b)); };
@@ -425,8 +657,13 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
         const u = { ...c, [field]: isNum ? (Number(val) || 0) : val };
         if (field === "daysOnBoard") {
           u.actualHA = u.daysOnBoard === u.daysOfMonth ? (u.ownerPaid || 0) : Math.round(((u.ownerPaid || 0) / u.daysOfMonth) * u.daysOnBoard * 100) / 100;
+          u.actManning = u.daysOnBoard === u.daysOfMonth ? (u.manningFees || 0) : Math.round(((u.manningFees || 0) / u.daysOfMonth) * u.daysOnBoard * 100) / 100;
+          const isOfc = /master|chief|officer|engineer|cadet/i.test(u.rank || "");
+          const maxLp = (u.salary || 0) * (isOfc ? 0.05 : 0.10);
+          u.actLeavePay = u.daysOnBoard === u.daysOfMonth ? maxLp : Math.round((maxLp / u.daysOfMonth) * u.daysOnBoard * 100) / 100;
         }
         u.totalPayment = (u.actualHA || 0) + (u.pob || 0) + (u.bonus || 0) + (u.pdeFees || 0) + (u.visaFees || 0) + (u.workingGear || 0);
+        u.netCrewPay = Math.max(0, u.totalPayment - (u.actManning || 0) - (u.actLeavePay || 0) - (u.depFeeDed || 0));
         return u;
       });
       const newTHA = Math.round(uc.reduce((s, c) => s + (c.actualHA || 0), 0) * 100) / 100;
@@ -444,7 +681,8 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${b.id}-${b.client}-${b.month}.csv`.replace(/[/\\?%*:|"<>]/g, '-');
+    const safeName = `${b.id}-${b.client}-${b.month}`.replace(/[^a-zA-Z0-9\- \u1000-\u109F]/g, '_');
+    link.download = `${safeName}.csv`;
     document.body.appendChild(link);
     link.click();
     setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 100);
@@ -466,7 +704,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
           <thead>
             <tr>
               {b.status === "Draft" && <th style={{ ...thS, width: 30 }}></th>}
-              {["Name", "Sign On Date", "Wages/M", "From", "To", "Days on Board", "Days of Month", "Actual HA", "POB", "Bonus", "PDE Fees", "VISA FEES", "WG", "Total Payment", "Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px" }}>{h}</th>)}
+              {["Name", "Sign On Date", "Wages/M", "From", "To", "Days on Board", "Days of Month", "Actual HA", "POB", "Bonus", "PDE Fees", "VISA", "WG", "Owner Total", "Manning(-)", "Leave(-)", "DepFee(-)", "Crew Net", "Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px", background: ["Manning(-)", "Leave(-)", "DepFee(-)", "Crew Net"].includes(h) ? "#f1f5f9" : undefined }}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -493,6 +731,10 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
                     <td style={tdS}><input type="number" value={c.visaFees || ""} onChange={e => upL(b.id, c.id || c.name, "visaFees", e.target.value)} style={fi} placeholder="0" /></td>
                     <td style={tdS}><input type="number" value={c.workingGear || ""} onChange={e => upL(b.id, c.id || c.name, "workingGear", e.target.value)} style={fi} placeholder="0" /></td>
                     <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right", color: C.err }}>{(c.actManning || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right", color: C.err }}>{(c.actLeavePay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={tdS}><input type="number" value={c.depFeeDed || ""} onChange={e => upL(b.id, c.id || c.name, "depFeeDed", e.target.value)} style={{...fi, color: C.err}} placeholder="0" /></td>
+                    <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.ok }}>{(c.netCrewPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     <td style={tdS}><input value={c.billRemark || ""} onChange={e => upL(b.id, c.id || c.name, "billRemark", e.target.value)} style={{ ...fi, width: 90, textAlign: "left" }} placeholder="—" /></td>
                   </>
                 ) : (
@@ -506,6 +748,10 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
                     <td style={{ ...tdS, textAlign: "right" }}>{c.visaFees || "—"}</td>
                     <td style={{ ...tdS, textAlign: "right" }}>{c.workingGear || "—"}</td>
                     <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.acc }}>{(c.totalPayment || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right", color: C.err }}>{(c.actManning || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right", color: C.err }}>{(c.actLeavePay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td style={{ ...tdS, textAlign: "right", color: C.err }}>{c.depFeeDed || "—"}</td>
+                    <td style={{ ...tdS, fontWeight: 700, textAlign: "right", color: C.ok }}>{(c.netCrewPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     <td style={{ ...tdS, fontSize: 10, color: C.txD }}>{c.billRemark || "—"}</td>
                   </>
                 )}
@@ -517,7 +763,9 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
               <td colSpan={b.status === "Draft" ? 8 : 7} style={{ ...tdS, textAlign: "right", fontWeight: 700 }}>TOTAL</td>
               <td style={{ ...tdS, textAlign: "right", fontWeight: 700, color: C.acc }}>{(b.totalHA || b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td colSpan={5}></td>
-              <td style={{ ...tdS, textAlign: "right", fontWeight: 700, fontSize: 12, color: C.ok }}>{(b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td style={{ ...tdS, textAlign: "right", fontWeight: 700, fontSize: 11, color: C.acc }}>{(b.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td colSpan={3}></td>
+              <td style={{ ...tdS, textAlign: "right", fontWeight: 700, fontSize: 12, color: C.ok }}>{((b.crew || []).reduce((sum, c) => sum + (c.netCrewPay || 0), 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               <td></td>
             </tr>
           </tfoot>
@@ -556,7 +804,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
 }
 
 // ============== RECONCILIATION ==============
-function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
+function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk, genPayrollFromBill }) {
   const [pf, setPf] = useState({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0], slipUrl: "" });
   const [res, setRes] = useState(null);
   const [ocrLd, setOcrLd] = useState(false);
@@ -617,7 +865,14 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
   const rec = async () => { const bill = bills.find(b => b.id === pf.billId); if (!bill) return; const amt = Number(pf.amount); const diff = amt - bill.total;
     const pay = { id: `PAY-${String(payments.length + 1).padStart(3, "0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff, slipUrl: pf.slipUrl };
     setPayments([...payments, pay]); if (fsOk) fs.setD("payments", pay.id, pay);
-    if (Math.abs(diff) < 0.01) { setBills(bills.map(b => b.id === bill.id ? { ...b, status: "Paid" } : b)); if (fsOk) fs.upD("bills", bill.id, { status: "Paid" }); setRes({ ok: true, msg: `Matches ${bill.id}. PAID.` }); showT("Matched!"); }
+    if (Math.abs(diff) < 0.01) { 
+      setBills(bills.map(b => b.id === bill.id ? { ...b, status: "Paid" } : b)); 
+      if (fsOk) fs.upD("bills", bill.id, { status: "Paid" }); 
+      setRes({ ok: true, msg: `Matches ${bill.id}. PAID.` }); 
+      showT("Matched!"); 
+      // AUTO-TRIGGER PAYROLL
+      await genPayrollFromBill(bill, pay.slipUrl);
+    }
     else { setRes({ ok: false, msg: `Mismatch on ${bill.id}.`, diff }); showT("Mismatch", "wrn"); }
     setPf({ billId: "", amount: "", ref: "", date: new Date().toISOString().split("T")[0], slipUrl: "" }); setOcrMsg(""); };
     
@@ -626,7 +881,7 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk }) {
     <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>2. Upload Bank Slip for OCR Validation</label><div style={{ display: "flex", gap: 8 }}><input type="file" accept="image/*" onChange={handleOcr} style={{...inp, flex: 1}} disabled={!pf.billId || ocrLd} /></div></div>
     {pf.slipUrl && <div style={{ gridColumn: "1/-1", marginBottom: 8 }}><div style={{ fontSize: 10, color: C.txM, marginBottom: 4 }}>Slip Preview:</div><img src={pf.slipUrl} alt="Slip Preview" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 6, border: `1px solid ${C.bdr}`, cursor: "pointer" }} onClick={() => window.open(pf.slipUrl, "_blank")} /></div>}
     {ocrMsg && <div style={{ gridColumn: "1/-1", fontSize: 11, padding: 8, borderRadius: 5, background: ocrMsg.includes("✅") ? C.okB : (ocrMsg.includes("❌") ? C.wrnB : C.bg), color: ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.txM), border: `1px solid ${ocrMsg.includes("✅") ? C.ok : (ocrMsg.includes("❌") ? C.wrn : C.bdr)}` }}>{ocrLd ? (upLd ? "Uploading Attachment..." : "Scanning Image...") : ocrMsg}</div>}
-    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>3. Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1", marginTop: 8 }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount || upLd}>Reconcile & Create Resulting Slips</Btn></div></div>}</div>
+    <div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>3. Amount</label><input type="number" value={pf.amount} onChange={e => setPf({ ...pf, amount: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Ref</label><input value={pf.ref} onChange={e => setPf({ ...pf, ref: e.target.value })} style={inp} /></div><div><label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Date</label><input type="date" value={pf.date} onChange={e => setPf({ ...pf, date: e.target.value })} style={inp} /></div><div style={{ gridColumn: "1/-1", marginTop: 8 }}><Btn onClick={rec} disabled={!pf.billId || !pf.amount || upLd}>Reconcile & Generate Payroll</Btn></div></div>}</div>
         {res && <div style={{ background: res.ok ? C.okB : C.wrnB, border: `1px solid ${res.ok ? C.ok : C.wrn}33`, borderRadius: 7, padding: 12, marginBottom: 14 }}>
       <div style={{ fontWeight: 600, color: res.ok ? C.ok : C.wrn }}>{res.ok ? "MATCH" : "MISMATCH"} - {res.msg}</div>
       {res.diff != null && !res.ok && (
@@ -671,433 +926,335 @@ function SlipV({ crew, payments, slips, setSlips, showT, fs, fsOk }) {
 }
 
 // ============== DISTRIBUTION ==============
-function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, payments, bills }) {
-  const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
-  
-  const exportPayrollPDF = (calc, rate, extra, crew) => {
-    const trs = calc.payments.map((p, i) => {
-        const c = crew.find(cr => cr.id === p.crewId) || {};
-        const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-        const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
-        return `<tr>
-          <td>${i+1}</td>
-          <td><b>${c.name}</b><br><small>${c.rank}</small></td>
-          <td>${c.bankName || "CASH"}<br><small>${c.bankAccNo || ""}</small></td>
-          <td>$${(p.total || 0).toLocaleString()}</td>
-          <td>${ex.bc.toLocaleString()}</td>
-          <td>${ex.ref.toLocaleString()}</td>
-          <td>${ex.ded.toLocaleString()}</td>
-          <td style="font-weight:bold; color:#10B981">${mmk.toLocaleString()}</td>
-          <td>${c.allotmentType || "bank"}</td>
-        </tr>`;
-    }).join("");
-
-    const html = `<html><head><title>Payroll-${calc.bill.id}</title><style>
-        body { font-family: sans-serif; padding: 30px; font-size: 11px; }
-        h2 { margin: 0 0 10px; color: #2563EB; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .summary { margin: 15px 0; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; gap: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; }
-        th { background: #f1f5f9; font-size: 10px; text-transform: uppercase; color: #475569; }
-        .total { font-weight: bold; background: #f8fafc; }
-        .footer { margin-top: 60px; display: flex; justify-content: space-between; padding: 0 40px; }
-        .sig { text-align:center; width: 220px; border-top: 1px solid #94a3b8; padding-top: 8px; color: #64748b; font-size: 10px; }
-    </style></head><body>
-      ${getLH()}
-      <h2>PAYROLL SUMMARY: ${calc.vessel}</h2>
-      <div class="summary">
-        <span><b>Bill ID:</b> ${calc.bill.id}</span>
-        <span><b>Month:</b> ${calc.bill.month}</span>
-        <span><b>Exchange Rate:</b> 1 USD = ${rate.toLocaleString()} MMK</span>
-      </div>
-      <table>
-        <thead><tr>
-          <th>#</th><th>Staff Name</th><th>Bank Info</th><th>USD Amt</th><th>Bank Chg</th><th>Refund</th><th>Deduction</th><th>Net MMK</th><th>Type</th>
-        </tr></thead>
-        <tbody>${trs}</tbody>
-      </table>
-      <div class="footer">
-        <div class="sig">Prepared By (Accountant)</div>
-        <div class="sig">Approved By (Director)</div>
-      </div>
-    </body></html>`;
-    const w = window.open("", "_blank");
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 500);
-  };
-
-  const exportBankPDF = (calc, rate, extra, crew) => {
-    const banks = calc.payments.filter(p => {
-        const c = crew.find(cr => cr.id === p.crewId) || {};
-        return (c.allotmentType || "bank") === "bank";
-    });
-    const trs = banks.map((p, i) => {
-        const c = crew.find(cr => cr.id === p.crewId) || {};
-        const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-        const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
-        return `<tr>
-          <td>${i+1}</td>
-          <td><b>${c.bankAccName || c.name}</b></td>
-          <td>${c.bankAccNo || "-"}</td>
-          <td>${c.bankName || "-"}</td>
-          <td style="font-weight:bold; text-align:right">${mmk.toLocaleString()}</td>
-          <td>MMK</td>
-        </tr>`;
-    }).join("");
-
-    const html = `<html><head><title>BankList-${calc.bill.id}</title><style>
-        body { font-family: sans-serif; padding: 30px; font-size: 12px; line-height: 1.5; }
-        h2 { text-decoration: underline; text-align: center; margin-bottom: 25px; color: #1e3a8a; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #000; padding: 10px 12px; text-align: left; }
-        th { background: #f1f5f9; font-weight: 700; text-transform: uppercase; font-size: 11px; }
-        .footer { margin-top: 60px; text-align: right; font-size: 11px; padding-right: 20px; }
-    </style></head><body>
-      ${getLH()}
-      <h2>BANK REMITTANCE LIST: ${calc.vessel} (${calc.bill.month})</h2>
-      <table>
-        <thead><tr><th>#</th><th>Account Name</th><th>Account No.</th><th>Bank</th><th style="text-align:right">Amount</th><th>CCY</th></tr></thead>
-        <tbody>${trs}</tbody>
-      </table>
-      <div class="footer">
-        <br/><br/>
-        __________________________<br/>
-        Authorized Signature
-      </div>
-    </body></html>`;
-    const w = window.open("", "_blank");
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 500);
-  };
-
-  const exportCashPDF = (calc, rate, extra, crew) => {
-    const cash = calc.payments.filter(p => {
-        const c = crew.find(cr => cr.id === p.crewId) || {};
-        return (c.allotmentType || "bank") === "cash";
-    });
-    const trs = cash.map((p, i) => {
-        const c = crew.find(cr => cr.id === p.crewId) || {};
-        const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-        const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
-        return `<tr>
-          <td>${i+1}</td>
-          <td><b>${c.name}</b></td>
-          <td>${c.rank}</td>
-          <td style="font-weight:bold; text-align:right">${mmk.toLocaleString()}</td>
-          <td style="height: 40px; width: 150px;"></td>
-        </tr>`;
-    }).join("");
-
-    const html = `<html><head><title>CashList-${calc.bill.id}</title><style>
-        body { font-family: sans-serif; padding: 30px; font-size: 12px; }
-        h2 { text-decoration: underline; text-align: center; margin-bottom: 25px; color: #1e3a8a; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #000; padding: 12px; text-align: left; }
-        th { background: #f1f5f9; font-weight: 700; text-transform: uppercase; font-size: 11px; }
-    </style></head><body>
-      ${getLH()}
-      <h2>CASH PAYMENT LIST: ${calc.vessel} (${calc.bill.month})</h2>
-      <table>
-        <thead><tr><th>#</th><th>Name</th><th>Rank</th><th style="text-align:right">Amount (MMK)</th><th>Signature</th></tr></thead>
-        <tbody>${trs}</tbody>
-      </table>
-    </body></html>`;
-    const w = window.open("", "_blank");
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 500);
-  };
-
-  // IDs that already have a crewPayment record (any status)
-  const processedIds = new Set(crewPay.map(p => p.crewId));
-
-  // Slips that still have unprocessed crew
-  const pendingSlips = slips.filter(s => (s.crewIds || []).some(id => !processedIds.has(id)));
-
-  // Payments waiting for admin approval
-  const awaitingApproval = crewPay.filter(p => p.status === "Pending Approval");
-  const paidPayments     = crewPay.filter(p => p.status === "Paid");
-  const [calc, setCalc] = useState(null); // Selected bill for report
+// ============== DISTRIBUTION HUB ==============
+function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, payments, bills, genPayrollFromBill, onManualPayment, markProcessed, markPaid, approve, printPayslip, selectedMonth }) {
+  const [tab, setHubTab] = useState("approval");
+  const [isManualModalOpen, setManualModalOpen] = useState(false);
+  const [manualData, setManualData] = useState({ crewId: "", amount: "", vessel: "", remark: "" });
+  const [calc, setCalc] = useState(null); 
   const [rate, setRate] = useState(3985);
-  const [extra, setExtra] = useState({}); // { crewId: { bc, ref, ded } }
+  const [extra, setExtra] = useState({}); 
+  const [splitT, setSplitT] = useState(null); 
+  const [splitRows, setSplitRows] = useState([]); 
 
-  // Group paid payments by Bill/Vessel for reporting
-  const payrolls = bills.map(b => {
-    const pay = payments.find(p => p.billId === b.id);
-    if (!pay) return null;
-    const sls = slips.filter(s => s.payId === pay.id);
-    const cPays = paidPayments.filter(p => sls.some(s => s.id === p.slipId));
-    if (!cPays.length) return null;
-    return { bill: b, payments: cPays, clientName: b.client };
-  }).filter(Boolean);
+  const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
 
-  // Accountant: process slip → status "Pending Approval"
-  const proc = async (sl) => {
-    // Look up the bill via payment
-    const payment = payments.find(p => p.id === sl.payId);
-    const bill = payment ? bills.find(b => b.id === payment.billId) : null;
-
-    const newPays = (sl.crewIds || [])
-      .filter(id => !processedIds.has(id))
-      .map((cid, i) => {
-        const c = crew.find(cr => cr.id === cid);
-        if (!c) return null;
-        
-        let actualPayment = c.ownerPaid || 0;
-        if (bill && bill.crew) {
-          const billCrew = bill.crew.find(bc => bc.id === cid);
-          if (billCrew && billCrew.totalPayment !== undefined) {
-             actualPayment = billCrew.totalPayment;
-          }
-        }
-
-        return {
-          id: `CPAY-${String(crewPay.length + i + 1).padStart(3, "0")}`,
-          crewId: cid, crewName: c.name, slipId: sl.id,
-          vessel: c.vessel || (bill && bill.vessel) || "Unknown",
-          slipUrl: (payment && payment.slipUrl) || "",
-          total: actualPayment, bankAmount: actualPayment, cashAmount: 0,
-          type: c.allotment?.type || "bank",
-          status: "Pending Approval",
-          date: new Date().toISOString().split("T")[0],
-        };
-      }).filter(Boolean);
-    setCrewPay([...crewPay, ...newPays]);
-    if (fsOk) fs.batchW("crewPayments", newPays);
-    showT(`${newPays.length} payments submitted — awaiting admin approval`, "wrn");
+  const handleManualSubmit = () => {
+    if (!manualData.crewId || !manualData.amount) return showT("Please fill crew and amount", "wrn");
+    const c = crew.find(cr => String(cr.id) === String(manualData.crewId));
+    if (!c) return showT("Crew not found", "err");
+    onManualPayment({
+      crewId: c.id, crewName: c.name,
+      total: Number(manualData.amount), vessel: manualData.vessel || c.vessel,
+      bankName: c.bankName, bankAccNo: c.bankAccNo, bankAccName: c.bankAccName,
+      month: selectedMonth
+    });
+    setManualModalOpen(false);
+    setManualData({ crewId: "", amount: "", vessel: "", remark: "" });
   };
 
-  // Admin: approve a single payment
-  const approve = async (payId) => {
-    setCrewPay(crewPay.map(p => p.id === payId ? { ...p, status: "Paid", approvedAt: new Date().toISOString() } : p));
-    if (fsOk) fs.upD("crewPayments", payId, { status: "Paid", approvedAt: new Date().toISOString() });
-    showT("Payment approved ✓");
-  };
+  const awaitingApproval = crewPay.filter(p => p.status === "Pending");
+  // Robust filtering: handle potential month string differences (e.g. 2026-04 vs April 2026)
+  const isCorrectMonth = (m) => !m || !selectedMonth || m === selectedMonth || m.includes(selectedMonth) || selectedMonth.includes(m);
 
-  // Admin: approve all pending at once
-  const approveAll = async () => {
-    const now = new Date().toISOString();
-    const updated = crewPay.map(p => p.status === "Pending Approval" ? { ...p, status: "Paid", approvedAt: now } : p);
-    setCrewPay(updated);
-    if (fsOk) {
-      for (const p of awaitingApproval) {
-        await fs.upD("crewPayments", p.id, { status: "Paid", approvedAt: now });
+  const approvedPayments = crewPay.filter(p => p.status === "Approved");
+  const processedPayments = crewPay.filter(p => p.status === "Processed");
+  
+  const payrolls = useMemo(() => {
+    const groups = {};
+    const reportable = crewPay.filter(p => isCorrectMonth(p.month) && ["Approved", "Processed", "Paid"].includes(p.status));
+    
+    reportable.forEach(p => {
+      const gKey = p.slipId || "MANUAL";
+      if (!groups[gKey]) {
+        const bill = bills.find(b => b.id === p.slipId) || { id: "MANUAL", client: p.client || "Manual Distribution", month: p.month, vessel: p.vessel };
+        groups[gKey] = { bill, payments: [], clientName: bill.client };
       }
-    }
-    showT(`${awaitingApproval.length} payments approved ✓`);
-  };
+      groups[gKey].payments.push(p);
+    });
+    return Object.values(groups);
+  }, [crewPay, bills, selectedMonth]);
 
-  return <div>
-    {/* ── Accountant: Process Slips ── */}
-    <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}>
-      <h4 style={{ margin: "0 0 3px", fontSize: 12.5, fontWeight: 600 }}>Payment Distribution</h4>
-      <p style={{ fontSize: 10.5, color: C.txD, margin: "0 0 10px" }}>
-        {userRole === "admin"
-          ? "Review and approve crew salary payments."
-          : "Process crew payments from uploaded slips. Payments require Admin approval before finalizing."}
-      </p>
-      {!pendingSlips.length
-        ? <div style={{ color: C.txD, fontSize: 11.5 }}>{slips.length ? "All slips processed." : "No slips uploaded yet."}</div>
-        : pendingSlips.map(sl => {
-            const pendingCrew = (sl.crewIds || []).filter(id => !processedIds.has(id));
-            return <div key={sl.id} style={{ background: C.bg, borderRadius: 6, padding: 10, marginBottom: 6, border: `1px solid ${C.bdr}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span><span style={{ fontWeight: 600, color: C.acc }}>{sl.id}</span> · {sl.client} · {pendingCrew.length} crew</span>
-                <Btn v="ok" onClick={() => proc(sl)}>Submit for Approval</Btn>
-              </div>
-            </div>;
-          })
-      }
-    </div>
+  const paidPayments = crewPay.filter(p => p.status === "Paid" && isCorrectMonth(p.month));
 
-    {/* ── Admin: Approval Queue ── */}
-    {userRole === "admin" && awaitingApproval.length > 0 && (
-      <div style={{ background: `${C.wrn}10`, borderRadius: 8, border: `1px solid ${C.wrn}40`, padding: 14, marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div>
-            <h4 style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: C.wrn }}>⏳ Pending Approval ({awaitingApproval.length})</h4>
-            <p style={{ margin: "3px 0 0", fontSize: 10.5, color: C.txD }}>Review and confirm each payment before finalizing.</p>
-          </div>
-          <Btn v="ok" onClick={approveAll}>✓ Approve All</Btn>
-        </div>
-        <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr>{["Crew Name", "Slip", "Receipt", "Amount", "Type", "Date", "Action"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
-            <tbody>{awaitingApproval.map(p => (
-              <tr key={p.id} style={{ background: `${C.wrn}05` }}>
-                <td style={tdS}><span style={{ fontWeight: 600 }}>{p.crewName}</span></td>
-                <td style={tdS}>{p.slipId}</td>
-                <td style={tdS}>
-                  {p.slipUrl ? <Btn v="ghost" onClick={() => window.open(p.slipUrl, "_blank")} s={{ fontSize: 10, padding: "2px 6px" }}>👁️ Slip</Btn> : "—"}
-                </td>
-                <td style={{ ...tdS, fontWeight: 600, color: C.acc }}>${(p.total || 0).toLocaleString()}</td>
-                <td style={tdS}>{p.type}</td>
-                <td style={{ ...tdS, color: C.txD }}>{p.date}</td>
-                <td style={tdS}><Btn v="ok" s={{ fontSize: 10, padding: "3px 10px" }} onClick={() => approve(p.id)}>Approve</Btn></td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </div>
+  return (
+    <div style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.bdr}`, padding: 20, marginBottom: 15 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Payment Distribution Hub</h2>
+        <Btn onClick={() => setManualModalOpen(true)}>➕ Manual Payment</Btn>
       </div>
-    )}
 
-    {/* ── Paid Payments History ── */}
-    {/* ── Payroll Reporting ── */}
-    {payrolls.length > 0 && <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginTop: 14 }}>
-      <h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>🖨️ Payroll Reporting</h4>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
-        {payrolls.map(pr => (
-          <div key={pr.bill.id} style={{ background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 6, padding: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600 }}>{pr.clientName} · {pr.bill.month}</div>
-              <div style={{ fontSize: 9, color: C.txD }}>{pr.payments.length} crew · Bill: {pr.bill.id}</div>
-            </div>
-            <Btn v="ghost" s={{ fontSize: 10 }} onClick={async () => {
-                setCalc(pr);
-                if (fsOk) {
-                    const saved = await fs.getD("payrollSettings", pr.bill.id);
-                    if (saved) {
-                        setRate(saved.rate || 3985);
-                        setExtra(saved.extraSettings || {});
-                        showT("Loaded saved payroll settings");
-                    } else {
-                        setRate(3985);
-                        setExtra({});
-                    }
-                }
-            }}>Report</Btn>
-          </div>
+      <div style={{ display: "flex", borderBottom: `1px solid ${C.bdr}`, gap: 20, marginBottom: 20 }}>
+        {["approval", "dist", "verify", "history"].map(t => (
+          <button key={t} onClick={() => setHubTab(t)} style={{ 
+            paddingBottom: 10, border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+            color: tab === t ? C.pri : C.txD, borderBottom: tab === t ? `2px solid ${C.pri}` : "none" 
+          }}>
+            {t === "approval" ? "Approval Queue" : t === "dist" ? "Distribution" : t === "verify" ? "Verification" : "Paid History"}
+            <Badge t={t==="approval"?awaitingApproval.length:t==="dist"?approvedPayments.length:t==="verify"?processedPayments.length:paidPayments.length} c={t==="history"?"green":t==="verify"?"indigo":t==="dist"?"orange":"blue"} s={{marginLeft:6}}/>
+          </button>
         ))}
       </div>
-    </div>}
 
-    {/* ── Payroll Calculation Modal ── */}
-    {calc && <Mod title={`Payroll Summary: ${calc.clientName} (${calc.bill.month})`} onClose={() => setCalc(null)} w={950}>
-      <div style={{ marginBottom: 15, display: "flex", gap: 20, alignItems: "center", background: C.bg, padding: 10, borderRadius: 6, border: `1px solid ${C.bdr}` }}>
+      {tab === "approval" && (
         <div>
-          <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Exchange Rate (MMK/USD)</label>
-          <input type="number" value={rate} onChange={e => setRate(Number(e.target.value))} style={{ ...inp, width: 120 }} />
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 15 }}>
+             <h3 style={{ fontSize: 14, margin: 0 }}>Pending Approval</h3>
+          </div>
+          {!awaitingApproval.length ? <p style={{ textAlign: "center", padding: 30, color: C.txD }}>No pending tasks.</p> : (
+            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Crew", "Amount", "Source", "Action"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>{awaitingApproval.map(p => (
+                <tr key={p.id}>
+                  <td style={tdS}><b>{p.crewName}</b><br/><small style={{color:C.txD}}>{p.vessel}</small></td>
+                  <td style={{ ...tdS, fontWeight: 700, color: C.acc }}>${(p.total || 0).toLocaleString()}</td>
+                  <td style={tdS}>{p.slipId}</td>
+                  <td style={tdS}>{userRole === "admin" ? <Btn v="ok" s={{fontSize:10}} onClick={() => approve(p.id)}>Approve</Btn> : <Badge t="Waiting for Admin" c="orange"/>}</td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
         </div>
-        <div style={{ fontSize: 11, color: C.txD }}>
-          Calculates MMK totals and groups Bank/Cash lists.
-        </div>
-      </div>
-      
-      <div style={{ overflowX: "auto", maxHeight: 400, border: `1px solid ${C.bdr}`, borderRadius: 6 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5 }}>
-          <thead style={{ position: "sticky", top: 0, background: C.bg, zIndex: 1 }}>
-            <tr>{["Name", "Vessel", "Rank", "Remittance(USD)", "Bank Chg(MMK)", "Refunds(MMK)", "Ded.(MMK)", "Remittance(MMK)", "Type"].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {calc.payments.map(p => {
-              const c = crew.find(cr => cr.id === p.crewId) || {};
-              const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-              const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
-              const updateExtra = (k, v) => setExtra({ ...extra, [p.crewId]: { ...ex, [k]: Number(v) } });
-              
-              return <tr key={p.id}>
-                <td style={tdS}><b>{c.name}</b></td>
-                <td style={tdS}>{c.vessel || "Unknown"}</td>
-                <td style={tdS}>{c.rank}</td>
-                <td style={{ ...tdS, fontWeight: 600 }}>${(p.total || 0).toLocaleString()}</td>
-                <td style={tdS}><input type="number" value={ex.bc} onChange={e => updateExtra("bc", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
-                <td style={tdS}><input type="number" value={ex.ref} onChange={e => updateExtra("ref", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
-                <td style={tdS}><input type="number" value={ex.ded} onChange={e => updateExtra("ded", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
-                <td style={{ ...tdS, fontWeight: 700, color: C.pri }}>{mmk.toLocaleString()}</td>
-                <td style={tdS}><Badge t={c.allotmentType || "bank"} c={c.allotmentType === "cash" ? "orange" : "blue"} /></td>
-              </tr>
-            })}
-          </tbody>
-        </table>
-      </div>
+      )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
-        <Btn v="ghost" onClick={async () => {
-             // Save current batch settings to Firestore
-             const batchData = {
-                billId: calc.bill.id,
-                vessel: calc.vessel,
-                month: calc.bill.month,
-                rate: rate,
-                extraSettings: extra,
-                finalizedAt: new Date().toISOString()
-             };
-             if (fsOk) await fs.setD("payrollSettings", calc.bill.id, batchData);
-             showT("Payroll settings saved ✓");
-        }}>💾 Save Rate</Btn>
-        {(() => {
-          const hasBank = calc.payments.some(p => (crew.find(cr => cr.id === p.crewId)?.allotmentType || "bank") === "bank");
-          const hasCash = calc.payments.some(p => (crew.find(cr => cr.id === p.crewId)?.allotmentType) === "cash");
-          return <>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportPayrollPDF(calc, rate, extra, crew)}>📄 PDF Version</Btn>
-              <Btn v="sec" onClick={() => {
-                  const rows = calc.payments.map(p => {
-                    const c = crew.find(cr => cr.id === p.crewId) || {};
-                    const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-                    const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
-                    return { 
-                      No: c.no, Rank: c.rank, Name: c.name, 
-                      "Remittance (USD)": p.total, "Bank Chg (MMK)": ex.bc, 
-                      "Refunds (MMK)": ex.ref, "Office Ded. (MMK)": ex.ded, 
-                      "Remittance (MMK)": mmk, "Type": c.allotmentType || "bank" 
-                    };
-                  });
-                  downloadCSV(rows, `Payroll_Summary_${calc.vessel}_${calc.bill.month}.csv`);
-                  showT("Summary Downloaded");
-              }}>Download Excel (CSV)</Btn>
+      {tab === "dist" && (
+        <div>
+          <h3 style={{ fontSize: 14, marginBottom: 15 }}>Distribution (Approved)</h3>
+          {!approvedPayments.length ? <p style={{ textAlign: "center", padding: 30, color: C.txD }}>Nothing to distribute.</p> : (
+            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Crew", "Amount", "Method", "Actions"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>{approvedPayments.map(p => (
+                <tr key={p.id}>
+                  <td style={tdS}><b>{p.crewName}</b></td>
+                  <td style={{ ...tdS, fontWeight: 700, color: C.acc }}>${(p.total || 0).toLocaleString()}</td>
+                  <td style={tdS}>{p.type === "bank" ? `${p.bankName} (${p.bankAccNo})` : "Cash Pickup"}</td>
+                  <td style={tdS}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <Btn v="sec" s={{fontSize:9}} onClick={() => printPayslip(p)}>🖨️ Slip</Btn>
+                      {!p.isSplit && <Btn v="ghost" s={{fontSize:9}} onClick={() => {
+                         const c = crew.find(cr => String(cr.id) === String(p.crewId)) || {};
+                         const banks = c.banks && c.banks.length > 0 ? c.banks : [{ bankName: c.bankName, bankAccNo: c.bankAccNo, bankAccName: c.bankAccName, label: "Primary" }];
+                         setSplitRows(banks.map((b, i) => ({ ...b, amount: i === 0 ? p.total : 0 }))); setSplitT(p);
+                      }}>✂️ Split</Btn>}
+                      <Btn s={{fontSize:9}} onClick={() => markProcessed(p.id)}>Process Done</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+        </div>
+      )}
+
+      {tab === "verify" && (
+        <div>
+          <h3 style={{ fontSize: 14, marginBottom: 15 }}>Verification (Signed Slips)</h3>
+          {!processedPayments.length ? <p style={{ textAlign: "center", padding: 30, color: C.txD }}>No slips to verify.</p> : (
+            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Crew", "Amount", "Signed Slip", "Action"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>{processedPayments.map(p => (
+                <tr key={p.id}>
+                  <td style={tdS}>{p.crewName}</td>
+                  <td style={{ ...tdS, fontWeight: 700 }}>${(p.total || 0).toLocaleString()}</td>
+                  <td style={tdS}>{p.signedSlipUrl ? <a href={p.signedSlipUrl} target="_blank" style={{color:C.pri}}>View</a> : "Missing"}</td>
+                  <td style={tdS}>
+                    {userRole === "admin" ? <Btn v="ok" s={{fontSize:10}} onClick={() => markPaid(p.id)}>Mark Paid</Btn> : 
+                      <Btn v="ghost" s={{fontSize:9}} onClick={() => { const u = prompt("URL:", p.signedSlipUrl); if(u) markProcessed(p.id, u); }}>📎 Upload</Btn>}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )}
+        </div>
+      )}
+
+      {tab === "history" && (
+        <div>
+          <h3 style={{ fontSize: 14, marginBottom: 15 }}>Payment History</h3>
+          {!paidPayments.length ? <p style={{ textAlign: "center", padding: 30, color: C.txD }}>No history found.</p> : (
+            <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>{["Crew Name", "Amount", "Paid Date"].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>{paidPayments.slice().reverse().map(p => (
+                <tr key={p.id}><td style={tdS}>{p.crewName}</td><td style={tdS}>${(p.total || 0).toLocaleString()}</td><td style={tdS}>{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</td></tr>
+              ))}</tbody>
+            </table></div>
+          )}
+        </div>
+      )}
+
+      {isManualModalOpen && (
+         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, WebkitBackdropFilter: "blur(2px)", backdropFilter: "blur(2px)" }}>
+           <div style={{ background: C.card, padding: 25, borderRadius: 12, width: 400, border: `1px solid ${C.bdr}`, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}>
+             <h3 style={{ margin: "0 0 5px", fontSize: 15, fontWeight: 700 }}>Add Manual Payment</h3>
+             <p style={{ fontSize: 11, color: C.txD, marginBottom: 20 }}>Use for ad-hoc distributions (e.g. emergency leave pay).</p>
+             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 10, color: C.txM, fontWeight: 600, display: "block", marginBottom: 4 }}>Crew Member</label>
+                  <select style={inp} value={manualData.crewId} onChange={e => setManualData({...manualData, crewId: e.target.value})}>
+                    <option value="">Select Crew</option>
+                    {crew.map(c => <option key={c.id} value={c.id}>{c.id} - {c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: C.txM, fontWeight: 600, display: "block", marginBottom: 4 }}>Amount (USD)</label>
+                  <input type="number" style={inp} value={manualData.amount} onChange={e => setManualData({...manualData, amount: e.target.value})} placeholder="0.00" />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, color: C.txM, fontWeight: 600, display: "block", marginBottom: 4 }}>Vessel (Override)</label>
+                  <input style={inp} value={manualData.vessel} onChange={e => setManualData({...manualData, vessel: e.target.value})} placeholder="Default vessel if empty" />
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 15 }}>
+                  <Btn onClick={handleManualSubmit} s={{ flex: 2 }}>Create Payment</Btn>
+                  <Btn v="ghost" onClick={() => setManualModalOpen(false)} s={{ flex: 1 }}>Cancel</Btn>
+                </div>
+             </div>
+           </div>
+         </div>
+      )}
+
+      {splitT && <Mod title={`Split Payment: ${splitT.crewName}`} onClose={() => setSplitT(null)} w={600}>
+        <div style={{ marginBottom: 15, padding: 12, background: `${C.acc}10`, borderRadius: 8, border: `1px solid ${C.acc}30` }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 12 }}>Total to distribute: <b style={{ fontSize: 14 }}>${(splitT.total || 0).toLocaleString()}</b></span>
+            <span style={{ fontSize: 12 }}>Remaining: <b style={{ fontSize: 14, color: (splitT.total - splitRows.reduce((a, b) => a + (Number(b.amount) || 0), 0)) === 0 ? C.ok : C.err }}>
+              ${((splitT.total || 0) - splitRows.reduce((a, b) => a + (Number(b.amount) || 0), 0)).toLocaleString()}
+            </b></span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {splitRows.map((row, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1.5fr 1.5fr 1fr 30px", gap: 8, alignItems: "end", background: C.bgS, padding: 8, borderRadius: 6 }}>
+              <div>
+                <label style={{ fontSize: 9, color: C.txD }}>Bank / Account</label>
+                <div style={{ fontSize: 11, fontWeight: 500 }}>{row.bankName} - {row.bankAccNo}</div>
+                <div style={{ fontSize: 10, color: C.txM }}>{row.bankAccName} {row.label && `(${row.label})`}</div>
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: C.txM }}>USD Amount</label>
+                <input type="number" value={row.amount} onChange={e => {
+                  const nr = [...splitRows];
+                  nr[i].amount = e.target.value;
+                  setSplitRows(nr);
+                }} style={inp} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", height: 38 }}>
+                <Btn v="ghost" s={{ color: C.err, padding: 0 }} onClick={() => setSplitRows(splitRows.filter((_, idx) => idx !== i))}>✕</Btn>
+              </div>
             </div>
-            {hasBank && <div style={{ display: "flex", gap: 10 }}>
-              <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportBankPDF(calc, rate, extra, crew)}>📄 Bank PDF</Btn>
-              <Btn v="ok" onClick={() => {
-                  const rows = calc.payments.filter(p => {
-                      const c = crew.find(cr => cr.id === p.crewId) || {};
-                      return (c.allotmentType || "bank") === "bank";
-                  }).map(p => {
-                      const c = crew.find(cr => cr.id === p.crewId) || {};
-                      const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-                      return { 
-                        Rank: c.rank, Name: c.name, 
-                        "Bank Account Name": c.bankAccName, 
-                        "MMK Account No.": c.bankAccNo, 
-                        "Bank": c.bankName,
-                        "Total (MMK)": (p.total * rate) - ex.bc + ex.ref - ex.ded 
-                      };
-                  });
-                  downloadCSV(rows, `Bank_List_${calc.vessel}_${calc.bill.month}.csv`);
-                  showT("Bank List Downloaded");
-              }}>Download Bank Excel</Btn>
-            </div>}
-            {hasCash && <div style={{ display: "flex", gap: 10 }}>
-              <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportCashPDF(calc, rate, extra, crew)}>📄 Cash PDF</Btn>
-              <Btn v="wrn" onClick={() => {
-                  const rows = calc.payments.filter(p => {
-                      const c = crew.find(cr => cr.id === p.crewId) || {};
-                      return (c.allotmentType || "bank") === "cash";
-                  }).map(p => {
-                      const c = crew.find(cr => cr.id === p.crewId) || {};
-                      const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
-                      return { 
-                        Rank: c.rank, Name: c.name, 
-                        "Total Remittance (MMK)": (p.total * rate) - ex.bc + ex.ref - ex.ded 
-                      };
-                  });
-                  downloadCSV(rows, `Cash_Pickup_List_${calc.vessel}_${calc.bill.month}.csv`);
-                  showT("Cash List Downloaded");
-              }}>Download Cash Excel</Btn>
-            </div>}
-          </>;
-        })()}
-      </div>
-    </Mod>}
-  </div>;
+          ))}
+          <Btn v="sec" size="sm" onClick={() => setSplitRows([...splitRows, { bankName: "Other", bankAccNo: "", bankAccName: splitT.crewName, amount: 0, label: "Additional" }])}>+ Add Custom Account</Btn>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+          <Btn v="sec" onClick={() => setSplitT(null)}>Cancel</Btn>
+          <Btn v="ok" disabled={((splitT.total || 0) - splitRows.reduce((a, b) => a + (Number(b.amount) || 0), 0)) !== 0} onClick={async () => {
+             const validRows = splitRows.filter(r => r.amount > 0);
+             if (!validRows.length) return;
+             
+             const splitPayments = validRows.map((r, i) => ({
+               ...splitT,
+               id: `${splitT.id}-S${i+1}`,
+               total: Number(r.amount),
+               bankAmount: Number(r.amount),
+               bankName: r.bankName,
+               bankAccNo: r.bankAccNo,
+               bankAccName: r.bankAccName,
+               label: r.label,
+               isSplit: true,
+               status: "Approved"
+             }));
+
+             const updated = [...crewPay.filter(p => p.id !== splitT.id), ...splitPayments];
+             setCrewPay(updated);
+             if (fsOk) {
+               await fs.delD("crewPayments", splitT.id);
+               for (const sp of splitPayments) await fs.setD("crewPayments", sp.id, sp);
+             }
+             setSplitT(null);
+             showT(`Payment split into ${splitPayments.length} parts ✓`);
+          }}>Confirm Split</Btn>
+        </div>
+      </Mod>}
+
+      {/* ── Payroll Reporting ── */}
+      {payrolls.length > 0 && <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginTop: 14 }}>
+        <h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>🖨️ Payroll Reporting</h4>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+          {payrolls.map(pr => (
+            <div key={pr.bill.id} style={{ background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 6, padding: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 600 }}>{pr.clientName} · {pr.bill.month}</div>
+                <div style={{ fontSize: 9, color: C.txD }}>{pr.payments.length} crew · Bill: {pr.bill.id}</div>
+              </div>
+              <Btn v="ghost" s={{ fontSize: 10 }} onClick={async () => {
+                  setCalc(pr);
+                  if (fsOk) {
+                      const saved = await fs.getD("payrollSettings", pr.bill.id);
+                      if (saved) { setRate(saved.rate || 3985); setExtra(saved.extraSettings || {}); } else { setRate(3985); setExtra({}); }
+                  }
+              }}>Report</Btn>
+            </div>
+          ))}
+        </div>
+      </div>}
+
+      {/* ── Payroll Calculation Modal ── */}
+      {calc && <Mod title={`Payroll Summary: ${calc.clientName} (${calc.bill.month})`} onClose={() => setCalc(null)} w={950}>
+        <div style={{ marginBottom: 15, display: "flex", gap: 20, alignItems: "center", background: C.bg, padding: 10, borderRadius: 6, border: `1px solid ${C.bdr}` }}>
+          <div>
+            <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Exchange Rate (MMK/USD)</label>
+            <input type="number" value={rate} onChange={e => setRate(e.target.value)} style={{ ...inp, width: 120 }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.txD }}>Calculates MMK totals and groups Bank/Cash lists.</div>
+        </div>
+        
+        <div style={{ overflowX: "auto", maxHeight: 400, border: `1px solid ${C.bdr}`, borderRadius: 6 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 10.5 }}>
+            <thead style={{ position: "sticky", top: 0, background: C.bg, zIndex: 1 }}>
+              <tr>{["Name", "Vessel", "Rank", "Remittance(USD)", "Bank Chg(MMK)", "Refunds(MMK)", "Ded.(MMK)", "Remittance(MMK)", "Type"].map(h => <th key={h} style={thS}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {calc.payments.map(p => {
+                const c = crew.find(cr => cr.id === p.crewId) || {};
+                const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
+                const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
+                const updateExtra = (k, v) => setExtra({ ...extra, [p.crewId]: { ...ex, [k]: Number(v) } });
+                
+                return <tr key={p.id}>
+                  <td style={tdS}><b>{c.name}</b></td>
+                  <td style={tdS}>{c.vessel || "Unknown"}</td>
+                  <td style={tdS}>{c.rank}</td>
+                  <td style={{ ...tdS, fontWeight: 600 }}>${(p.total || 0).toLocaleString()}</td>
+                  <td style={tdS}><input type="number" value={ex.bc} onChange={e => updateExtra("bc", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
+                  <td style={tdS}><input type="number" value={ex.ref} onChange={e => updateExtra("ref", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
+                  <td style={tdS}><input type="number" value={ex.ded} onChange={e => updateExtra("ded", e.target.value)} style={{ ...inp, padding: "2px 5px", fontSize: 10 }} /></td>
+                  <td style={{ ...tdS, fontWeight: 700, color: C.pri }}>{mmk.toLocaleString()}</td>
+                  <td style={tdS}><Badge t={c.allotmentType || "bank"} c={c.allotmentType === "cash" ? "orange" : "blue"} /></td>
+                </tr>
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
+          <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportPayrollPDF(calc, rate, extra, crew)}>📄 PDF Summary</Btn>
+          <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportBankPDF(calc, rate, extra, crew)}>📄 Bank PDF</Btn>
+          <Btn v="ghost" s={{ fontSize: 10 }} onClick={() => exportCashPDF(calc, rate, extra, crew)}>📄 Cash PDF</Btn>
+          <Btn onClick={async () => {
+             const batchData = { billId: calc.bill.id, vessel: calc.vessel, month: calc.bill.month, rate: rate, extraSettings: extra, finalizedAt: new Date().toISOString() };
+             if (fsOk) await fs.setD("payrollSettings", calc.bill.id, batchData);
+             showT("Settings saved ✓");
+          }}>💾 Save Settings</Btn>
+        </div>
+      </Mod>}
+    </div>
+  );
 }
 
 
 // ============== STATUS BOARD ==============
-function BoardV({ crew, crewPay, slips, payments, bills, fN, setFN, fV, setFV, fC, setFC, vessels, clients, selectedMonth, setSelectedMonth }) {
+function BoardV({ userRole, crew, setCrew, crewPay, setCrewPay, slips, bills, payments, showT, fs, fsOk, selectedMonth, setSelectedMonth, fN, setFN, fV, setFV, fC, setFC, vessels, clients }) {
   // Filter by selected salary month
   const mBills = bills.filter(b => b.month === selectedMonth);
   const mBillIds = new Set(mBills.map(b => b.id));
@@ -1173,3 +1330,140 @@ function BoardV({ crew, crewPay, slips, payments, bills, fN, setFN, fV, setFV, f
     </div>
   </div>;
 }
+
+// ============== PDF EXPORT HELPERS ==============
+
+const exportPayrollPDF = (calc, rate, extra, crew) => {
+  const w = window.open("", "_blank");
+  let rows = "";
+  let totUSD = 0, totMMK = 0;
+  
+  calc.payments.forEach(p => {
+    const c = crew.find(cr => cr.id === p.crewId) || {};
+    const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
+    const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
+    totUSD += (p.total || 0);
+    totMMK += mmk;
+    rows += `<tr>
+      <td style="border:1px solid #ddd;padding:6px">${c.name}</td>
+      <td style="border:1px solid #ddd;padding:6px">${c.vessel || "—"}</td>
+      <td style="border:1px solid #ddd;padding:6px">${c.rank}</td>
+      <td style="border:1px solid #ddd;padding:6px;text-align:right">$${(p.total || 0).toLocaleString()}</td>
+      <td style="border:1px solid #ddd;padding:6px;text-align:right">${ex.bc.toLocaleString()}</td>
+      <td style="border:1px solid #ddd;padding:6px;text-align:right">${ex.ref.toLocaleString()}</td>
+      <td style="border:1px solid #ddd;padding:6px;text-align:right">${ex.ded.toLocaleString()}</td>
+      <td style="border:1px solid #ddd;padding:6px;text-align:right;font-weight:bold">${mmk.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  w.document.write(`<html><head><title>Payroll Summary - ${calc.clientName}</title>
+    <style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:11px;} th{background:#f4f4f4;padding:8px;border:1px solid #ddd;text-align:left;}</style>
+  </head><body>
+    ${getLH()}
+    <h2 style="text-align:center;margin:10px 0;font-size:16px;">PAYROLL SUMMARY REPORT</h2>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px">
+      <span><b>Client:</b> ${calc.clientName}</span>
+      <span><b>Month:</b> ${calc.bill.month}</span>
+      <span><b>Exchange Rate:</b> ${rate} MMK/USD</span>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Vessel</th><th>Rank</th><th>USD</th><th>B.Chg</th><th>Ref.</th><th>Ded.</th><th>Total MMK</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:#f9f9f9;font-weight:bold">
+        <td colspan="3" style="border:1px solid #ddd;padding:6px;text-align:right">GRAND TOTAL:</td>
+        <td style="border:1px solid #ddd;padding:6px;text-align:right">$${totUSD.toLocaleString()}</td>
+        <td colspan="3" style="border:1px solid #ddd;padding:6px;"></td>
+        <td style="border:1px solid #ddd;padding:6px;text-align:right">${totMMK.toLocaleString()} MMK</td>
+      </tr></tfoot>
+    </table>
+    <div style="margin-top:40px;display:flex;justify-content:space-between;font-size:12px">
+      <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Prepared By</div>
+      <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Approved By</div>
+    </div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+};
+
+const exportBankPDF = (calc, rate, extra, crew) => {
+  const w = window.open("", "_blank");
+  let rows = "";
+  let totMMK = 0;
+  
+  calc.payments.filter(p => (crew.find(cr => cr.id === p.crewId)?.allotmentType || "bank") === "bank").forEach(p => {
+    const c = crew.find(cr => cr.id === p.crewId) || {};
+    const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
+    const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
+    totMMK += mmk;
+    rows += `<tr>
+      <td style="border:1px solid #ddd;padding:8px">${c.bankAccName}</td>
+      <td style="border:1px solid #ddd;padding:8px">${c.bankAccNo}</td>
+      <td style="border:1px solid #ddd;padding:8px">${c.bankName}</td>
+      <td style="border:1px solid #ddd;padding:8px;text-align:right;font-weight:bold">${mmk.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  w.document.write(`<html><head><title>Bank Transfer List</title>
+    <style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;} th{background:#f4f4f4;padding:10px;border:1px solid #ddd;text-align:left;}</style>
+  </head><body>
+    ${getLH()}
+    <h2 style="text-align:center;margin:10px 0;font-size:16px;">BANK TRANSFER INSTRUCTIONS</h2>
+    <div style="font-size:12px;margin-bottom:15px"><b>Vessel:</b> ${calc.bill.vessel || "—"} | <b>Month:</b> ${calc.bill.month}</div>
+    <table>
+      <thead><tr><th>Account Name</th><th>Account Number</th><th>Bank</th><th>Amount (MMK)</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tr style="font-weight:bold;background:#f9f9f9">
+        <td colspan="3" style="border:1px solid #ddd;padding:10px;text-align:right">TOTAL MMK:</td>
+        <td style="border:1px solid #ddd;padding:10px;text-align:right">${totMMK.toLocaleString()}</td>
+      </tr>
+    </table>
+    <div style="margin-top:50px;font-size:12px">
+      <p>Please transfer the above amounts to the respective accounts.</p>
+      <div style="margin-top:40px;display:flex;justify-content:space-between">
+        <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Authorized Signatory</div>
+        <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Date</div>
+      </div>
+    </div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+};
+
+const exportCashPDF = (calc, rate, extra, crew) => {
+  const w = window.open("", "_blank");
+  let rows = "";
+  
+  calc.payments.filter(p => (crew.find(cr => cr.id === p.crewId)?.allotmentType) === "cash").forEach(p => {
+    const c = crew.find(cr => cr.id === p.crewId) || {};
+    const ex = extra[p.crewId] || { bc: 200, ref: 0, ded: 0 };
+    const mmk = (p.total * rate) - ex.bc + ex.ref - ex.ded;
+    rows += `<tr>
+      <td style="border:1px solid #ddd;padding:10px">${c.name}</td>
+      <td style="border:1px solid #ddd;padding:10px">${c.rank}</td>
+      <td style="border:1px solid #ddd;padding:10px;text-align:right;font-weight:bold">${mmk.toLocaleString()}</td>
+      <td style="border:1px solid #ddd;padding:10px;width:150px"></td>
+    </tr>`;
+  });
+
+  w.document.write(`<html><head><title>Cash Pickup List</title>
+    <style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;} th{background:#f4f4f4;padding:10px;border:1px solid #ddd;text-align:left;}</style>
+  </head><body>
+    ${getLH()}
+    <h2 style="text-align:center;margin:10px 0;font-size:16px;">CASH PICKUP LIST</h2>
+    <div style="font-size:12px;margin-bottom:15px"><b>Vessel:</b> ${calc.bill.vessel || "—"} | <b>Month:</b> ${calc.bill.month}</div>
+    <table>
+      <thead><tr><th>Name</th><th>Rank</th><th>Amount (MMK)</th><th>Signature</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:50px;font-size:12px">
+      <div style="margin-top:40px;display:flex;justify-content:space-between">
+        <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Paid By</div>
+        <div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Date</div>
+      </div>
+    </div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => w.print(), 500);
+};
+
+export default App;

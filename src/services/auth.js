@@ -1,4 +1,4 @@
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, getDoc, setDoc, getDocs, collection, updateDoc } from "firebase/firestore";
 import { app, firebaseConfig, db } from "./firebase";
 import { initializeApp } from "firebase/app";
@@ -98,6 +98,11 @@ export async function setupFirstAdmin(email, password, displayName) {
     active: true,
   });
   return uid;
+}
+
+// ── Reset Password ─────────────────────────────────────────────────────────
+export async function resetUserPassword(email) {
+  await sendPasswordResetEmail(auth, email);
 }
 
 // ── Toggle user active state ───────────────────────────────────────────────

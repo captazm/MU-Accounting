@@ -2,34 +2,99 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper: get the calling user's role from their profile doc
-    function role() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    function isAdmin() { return request.auth != null && role() == 'admin'; }
-    function isLoggedIn() { return request.auth != null; }
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isLoggedIn() && userDoc().role == 'admin';
+    }
+    function isActiveUser() {
+      return isLoggedIn() && userDoc().active == true;
+    }
+    function isActiveAdmin() {
+      return isActiveUser() && userDoc().role == 'admin';
+    }
 
-    // Users collection: only authenticated users can read their own profile;
-    // only admins can write (create/update other users)
+    // ── Users collection ──────────────────────────────────────────────────
     match /users/{uid} {
-      allow read: if isLoggedIn() && (request.auth.uid == uid || role() == 'admin');
-      allow write: if isAdmin();
-      // Allow creating the very first user (no users exist yet = setup mode)
-      allow create: if request.auth != null;
+      // Any logged-in user can read their own profile; admin can read all
+      allow read: if isLoggedIn() && (request.auth.uid == uid || isAdmin());
+
+      // Only admin can update existing user docs
+      allow update: if isActiveAdmin();
+
+      // Allow create ONLY if no users exist yet (first-time setup)
+      // OR if an active admin is creating the account
+      allow create: if isActiveAdmin() ||
+        (request.auth != null &&
+         !exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+
+      // Only admin can delete users
+      allow delete: if isActiveAdmin();
     }
 
-    // crewPayments: accountant can create (Pending Approval), only admin can set Paid
+    // ── Crew Registry ─────────────────────────────────────────────────────
+    match /crew/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
+    // ── Bills ─────────────────────────────────────────────────────────────
+    match /bills/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
+    // ── Payments (received from client) ───────────────────────────────────
+    match /payments/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
+    // ── Slips (salary assignment records) ────────────────────────────────
+    match /slips/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
+    // ── Crew Payments (payroll distribution) ─────────────────────────────
+    // Accountant can create Pending records and update non-Paid fields
+    // Only Admin can approve (Pending→Approved) and mark Paid
     match /crewPayments/{docId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn();
-      allow update: if isLoggedIn() &&
-        (resource.data.status != 'Paid' || isAdmin());
-      allow delete: if isAdmin();
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser() && (
+        // Admin can do anything
+        isActiveAdmin() ||
+        // Accountant can update ONLY if not changing status to Approved/Paid
+        (resource.data.status != 'Paid' &&
+         request.resource.data.status != 'Approved' &&
+         request.resource.data.status != 'Paid')
+      );
+      allow delete: if isActiveAdmin();
     }
 
-    // All other collections: any authenticated user can read/write
+    // ── Payroll Settings (exchange rate, deductions) ──────────────────────
+    match /payrollSettings/{docId} {
+      allow read:   if isActiveUser();
+      allow write:  if isActiveUser();
+    }
+
+    // ── Deny everything else by default ──────────────────────────────────
     match /{document=**} {
-      allow read, write: if isLoggedIn();
+      allow read, write: if false;
     }
   }
 }

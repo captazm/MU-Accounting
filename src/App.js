@@ -279,29 +279,32 @@ function App() {
 
   // ── Improved Spinner ────────────────────────────────────────────────────
   const Spinner = ({ msg }) => (
-    <div style={{ height: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: C.txt, fontFamily: "system-ui,sans-serif" }}>
-      <div style={{ position: "relative", width: 72, height: 72, marginBottom: 24 }}>
-        <svg width="72" height="72" viewBox="0 0 72 72" style={{ position: "absolute", top: 0, left: 0, animation: "mu-spin 1.4s linear infinite" }}>
-          <circle cx="36" cy="36" r="30" fill="none" stroke={C.bdr} strokeWidth="3"/>
-          <circle cx="36" cy="36" r="30" fill="none" stroke={C.pri} strokeWidth="3"
-            strokeDasharray="80 110" strokeLinecap="round"
-            style={{ filter: `drop-shadow(0 0 6px ${C.pri})` }}
-          />
-        </svg>
-        <div style={{
-          position: "absolute", inset: 10, borderRadius: 14,
-          overflow: "hidden",
-          border: "1px solid rgba(134,25,143,0.4)",
-          boxShadow: "0 0 20px rgba(134,25,143,0.3)",
-        }}>
-          <img src="/logo.jpg" alt="logo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    <div style={{
+      height: "100vh", background: C.bg,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "system-ui,sans-serif",
+      position: "relative", overflow: "hidden",
+    }}>
+      <div style={{ position:"absolute", top:"35%", left:"50%", transform:"translate(-50%,-50%)", width:360, height:360, borderRadius:"50%", background:"radial-gradient(circle, rgba(134,25,143,0.1) 0%, transparent 70%)", pointerEvents:"none", animation:"mu-pulse-dot 3s ease-in-out infinite" }} />
+      <div style={{ position:"absolute", bottom:"20%", left:"50%", transform:"translateX(-50%)", width:280, height:180, borderRadius:"50%", background:"radial-gradient(circle, rgba(14,165,233,0.06) 0%, transparent 70%)", pointerEvents:"none" }} />
+      {/* Logo — circular, triple pulsing rings */}
+      <div style={{ position:"relative", width:84, height:84, marginBottom:30 }}>
+        <div style={{ position:"absolute", inset:-14, borderRadius:"50%", border:"1px solid rgba(134,25,143,0.12)", animation:"mu-ring-pulse 2.4s ease-in-out 0.8s infinite" }} />
+        <div style={{ position:"absolute", inset:-7,  borderRadius:"50%", border:"1.5px solid rgba(134,25,143,0.25)", animation:"mu-ring-pulse 2.4s ease-in-out 0.4s infinite" }} />
+        <div style={{ position:"absolute", inset:-2,  borderRadius:"50%", border:"2px solid rgba(134,25,143,0.45)", animation:"mu-ring-pulse 2.4s ease-in-out infinite" }} />
+        <div style={{ width:"100%", height:"100%", borderRadius:"50%", overflow:"hidden", boxShadow:"0 0 24px rgba(134,25,143,0.35), 0 0 48px rgba(134,25,143,0.12)" }}>
+          <img src="/logo.jpg" alt="Mahar Unity" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
         </div>
       </div>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, letterSpacing: "1.5px", color: C.txt }}>MAHAR UNITY SRPS</div>
-      <div style={{ color: C.txM, fontSize: 11.5, display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.pri, display: "inline-block", animation: "mu-pulse-dot 1.2s ease infinite" }} />
-        <span style={{ animation: "mu-pulse-dot 1.2s ease 0.4s infinite" }}>{msg || "Loading..."}</span>
+      <div style={{ fontSize:15, fontWeight:700, letterSpacing:"2.5px", color:C.txt, marginBottom:3 }}>MAHAR UNITY</div>
+      <div style={{ fontSize:9.5, color:C.txD, letterSpacing:"3.5px", marginBottom:30 }}>SRPS ACCOUNTING</div>
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:14 }}>
+        {[0,1,2,3,4].map(i => (
+          <div key={i} style={{ width:i===2?7:5, height:i===2?7:5, borderRadius:"50%", background:C.pri, opacity:0.4+i*0.12, animation:`mu-wave-dot 1.3s ease-in-out ${i*0.13}s infinite` }} />
+        ))}
       </div>
+      <div style={{ fontSize:11, color:C.txM, letterSpacing:"0.3px" }}>{msg || "Loading..."}</div>
     </div>
   );
 

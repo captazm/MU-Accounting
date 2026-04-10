@@ -366,6 +366,15 @@ if (typeof document !== "undefined" && !document.getElementById(_styleId)) {
       from { transform: scaleY(0); }
       to   { transform: scaleY(1); }
     }
+    @keyframes mu-ring-pulse {
+      0%   { transform: scale(1);    opacity: 1; }
+      70%  { transform: scale(1.18); opacity: 0; }
+      100% { transform: scale(1);    opacity: 0; }
+    }
+    @keyframes mu-wave-dot {
+      0%, 100% { transform: translateY(0);   opacity: 0.5; }
+      50%       { transform: translateY(-7px); opacity: 1; }
+    }
   `;
   document.head.appendChild(s);
 }

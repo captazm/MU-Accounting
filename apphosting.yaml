@@ -1,6 +1,6 @@
 kind: "AppHostingYaml"
 schemaVersion: "v1"
-environmentVariables:
+env:
   - variable: "REACT_APP_FIREBASE_API_KEY"
     value: "AIzaSyAXOAoXKqKdaMXi-Q3KiIeQpgyEQul-ghU"
     availability: ["BUILD", "RUNTIME"]

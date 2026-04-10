@@ -1,0 +1,21 @@
+kind: "AppHostingYaml"
+schemaVersion: "v1"
+environmentVariables:
+  - variable: "REACT_APP_FIREBASE_API_KEY"
+    value: "AIzaSyAXOAoXKqKdaMXi-Q3KiIeQpgyEQul-ghU"
+    availability: ["BUILD", "RUNTIME"]
+  - variable: "REACT_APP_FIREBASE_AUTH_DOMAIN"
+    value: "mu-accounting.firebaseapp.com"
+    availability: ["BUILD", "RUNTIME"]
+  - variable: "REACT_APP_FIREBASE_PROJECT_ID"
+    value: "mu-accounting"
+    availability: ["BUILD", "RUNTIME"]
+  - variable: "REACT_APP_FIREBASE_STORAGE_BUCKET"
+    value: "mu-accounting.firebasestorage.app"
+    availability: ["BUILD", "RUNTIME"]
+  - variable: "REACT_APP_FIREBASE_MESSAGING_SENDER_ID"
+    value: "1092326885356"
+    availability: ["BUILD", "RUNTIME"]
+  - variable: "REACT_APP_FIREBASE_APP_ID"
+    value: "1:1092326885356:web:01aa2097783d8e8e07a2c9"
+    availability: ["BUILD", "RUNTIME"]

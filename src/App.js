@@ -166,13 +166,13 @@ function App() {
   }), [crew, fN, fV, fC]);
 
   const allNav = [
-    { id: "dashboard", label: "Dashboard",       icon: "📊" },
-    { id: "crew",      label: "Crew Registry",   icon: "👥" },
-    { id: "billing",   label: "Monthly Billing", icon: "📄" },
-    { id: "reconcile", label: "Reconciliation",  icon: "🔍" },
-    { id: "dist",      label: "Payment Dist.",   icon: "💸" },
-    { id: "board",     label: "Status Board",    icon: "📌" },
-    { id: "users",     label: "User Management", icon: "🔐", adminOnly: true },
+    { id: "dashboard", label: "Dashboard",       icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.9"/><rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.75"/></svg> },
+    { id: "crew",      label: "Crew Registry",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="7.5" cy="6" r="3" fill="currentColor" opacity="0.9"/><circle cx="13.5" cy="7" r="2.2" fill="currentColor" opacity="0.5"/><path d="M1 16c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.9"/><path d="M13.5 10.5c2.485 0 4.5 1.97 4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5"/></svg> },
+    { id: "billing",   label: "Monthly Billing", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M3 2h11l3 3v13a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="currentColor" opacity="0.12"/><path d="M13 2v4h4" stroke="currentColor" strokeWidth="1.4" opacity="0.5"/><path d="M7 9h6M7 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/></svg> },
+    { id: "reconcile", label: "Reconciliation",  icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.9"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/></svg> },
+    { id: "dist",      label: "Payment Dist.",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><path d="M3 10h14M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><circle cx="5" cy="10" r="2" fill="currentColor" opacity="0.5"/><circle cx="15" cy="6" r="1.5" fill="currentColor" opacity="0.4"/><circle cx="15" cy="14" r="1.5" fill="currentColor" opacity="0.4"/></svg> },
+    { id: "board",     label: "Status Board",    icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="3" width="16" height="2" rx="1" fill="currentColor" opacity="0.4"/><rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor" opacity="0.9"/><rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor" opacity="0.6"/><circle cx="17" cy="10" r="2.5" fill="currentColor" opacity="0.85"/></svg> },
+    { id: "users",     label: "User Management", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
   const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc, getD: fsGetDoc };
@@ -183,13 +183,54 @@ function App() {
     for (const c of bill.crew) {
       const p = {
         id: `P${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        slipId: bill.id, crewId: c.crewId, crewName: c.name, rank: c.rank,
-        vessel: c.vessel || bill.vessel, client: c.client || bill.client,
-        total: c.netCrewPay || c.salary || 0, status: "Pending", month: bill.month,
-        type: c.allotmentType || "bank", bankName: c.bankName || "",
-        bankAccNo: c.bankAccNo || "", bankAccName: c.bankAccName || "",
-        signedSlipUrl: "", date: new Date().toISOString().split("T")[0],
-        createdAt: new Date().toISOString()
+        // Identity
+        slipId:       bill.id,
+        crewId:       c.crewId || c.id,
+        crewName:     c.name,
+        rank:         c.rank         || "",
+        vessel:       c.vessel       || bill.vessel || "",
+        client:       c.client       || bill.client || "",
+        month:        bill.month,
+        joinDate:     c.joinDate     || "",
+        // Bill period
+        billFrom:     c.from         || bill.from   || "",
+        billTo:       c.to           || bill.to     || "",
+        daysOnBoard:  c.daysOnBoard  || 0,
+        daysOfMonth:  c.daysOfMonth  || 0,
+        // Earnings (from bill row)
+        ownerPaid:    c.ownerPaid    || 0,   // Wages/Month
+        actualHA:     c.actualHA     || 0,   // Actual HA (pro-rated)
+        pob:          c.pob          || 0,
+        bonus:        c.bonus        || 0,
+        pdeFees:      c.pdeFees      || 0,
+        visaFees:     c.visaFees     || 0,
+        workingGear:  c.workingGear  || 0,
+        totalPayment: c.totalPayment || 0,   // Owner total
+        // Deductions (from bill row)
+        actManning:   c.actManning   || 0,   // Manning fee (deducted)
+        actLeavePay:  c.actLeavePay  || 0,   // Leave pay accumulated
+        depFeeDed:    c.depFeeDed    || 0,   // DEP fee deducted
+        // Crew registry fields
+        salary:       c.salary       || 0,   // Basic salary
+        leavePay:     c.leavePay     || 0,   // Leave pay / month (from registry)
+        office:       c.office       || 0,   // DEP fees/month
+        paidDepFees:  c.paidDepFees  || 0,
+        balanceDepFees: c.balanceDepFees || 0,
+        accumulatedLeavePay: c.accumulatedLeavePay || 0,
+        // Net result
+        netCrewPay:   c.netCrewPay   || 0,
+        total:        c.netCrewPay   || 0,   // final payable (editable later)
+        grossTotal:   c.netCrewPay   || 0,   // reference to pre-edit total
+        // Bank
+        type:         c.allotmentType || "bank",
+        bankName:     c.bankName      || "",
+        bankAccNo:    c.bankAccNo     || "",
+        bankAccName:  c.bankAccName   || "",
+        // Status
+        status:       "Pending",
+        signedSlipUrl: "",
+        date:         new Date().toISOString().split("T")[0],
+        createdAt:    new Date().toISOString(),
       };
       items.push(p);
       if (fsOk) await fs.setD("crewPayments", p.id, p);
@@ -247,30 +288,155 @@ function App() {
     showT("Payment Verified & Paid ✓", "ok");
   };
 
-  const printPayslip = (p) => {
+  const printPayslip = (p, exchRate = 3985) => {
     const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Payslip - ${p.crewName}</title><style>body{font-family:sans-serif;padding:30px;line-height:1.5;} .h{font-weight:bold;margin-top:15px;border-bottom:1px solid #eee;}</style></head>
-      <body>
-        <h2 style="margin-bottom:0">MAHAR UNITY SHIPPING</h2>
-        <p style="font-size:12px;margin-top:5px;color:#666">INDIVIDUAL PAYROLL SLIP</p>
-        <div class="h">CREW DETAILS</div>
-        <p>Name: <b>${p.crewName}</b><br/>ID: ${p.crewId || "—"}<br/>Vessel: ${p.vessel}</p>
-        <div class="h">PAYMENT SUMMARY</div>
-        <p>Slip ID: ${p.slipId}<br/>Date: ${p.date}</p>
-        <div style="background:#f9f9f9;padding:15px;border:1px solid #ddd;margin-top:10px">
-          <table style="width:100%">
-            <tr><td><b>Total Net Pay:</b></td><td style="text-align:right"><b>$${(p.total || 0).toLocaleString()}</b></td></tr>
-            <tr><td style="font-size:12px;color:#666">Deductions (Dep Fees):</td><td style="text-align:right;font-size:12px;color:#666">-$${(p.depFeeDed || 0).toLocaleString()}</td></tr>
-            <tr><td style="font-size:12px;color:#666">Accumulated Leave Pay:</td><td style="text-align:right;font-size:12px;color:#666">+$${(p.actLeavePay || 0).toLocaleString()}</td></tr>
-          </table>
+    const fmtUSD = (v) => `${(Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2})}`;
+    const fmtMMK = (v) => `${Math.round(Number(v)||0).toLocaleString()} MMK`;
+    // Bank charge logic:
+    // - 200 MMK fixed always
+    // - 5 USD additional UNLESS salary < $200 (exempted)
+    const bankChargeUSD = (Number(p.salary) || 0) < 200 ? 0 : (Number(p.bankCharge) || 5);
+    const bankChargeMMK = 200;
+    const usedRate = exchRate;
+    // Net MMK = (net USD - bankChargeUSD) * rate - bankChargeMMK
+    const netMMK = Math.round((Number(p.total) - bankChargeUSD) * usedRate - bankChargeMMK);
+    const row = (lbl, val, cls="", note="") =>
+      `<tr><td class="lbl">${lbl}${note?`<span class="note">${note}</span>`:''}</td><td class="val ${cls}">${val}</td></tr>`;
+    const divider = `<tr><td colspan="2" style="padding:3px 0"><div style="border-top:1px dashed #e5e7eb"></div></td></tr>`;
+    w.document.write(`<!DOCTYPE html><html><head><title>Payslip — ${p.crewName}</title>
+    <style>
+      *{font-family:Arial,sans-serif;margin:0;padding:0;box-sizing:border-box}
+      body{padding:24px 28px;font-size:11px;color:#111;background:#fff;max-width:680px;margin:0 auto}
+      h1{font-size:15px;font-weight:800;color:#111;margin-bottom:2px}
+      .subtitle{font-size:10px;color:#6b7280;margin-bottom:16px}
+      .section{margin-bottom:12px}
+      .section-title{font-size:8.5px;font-weight:700;letter-spacing:1.4px;color:#6b21a8;text-transform:uppercase;border-bottom:2px solid #6b21a8;padding-bottom:3px;margin-bottom:7px}
+      table{width:100%;border-collapse:collapse}
+      td{padding:3.5px 6px;vertical-align:top}
+      td.lbl{color:#555;width:58%}
+      td.val{font-weight:600;text-align:right}
+      .pos{color:#059669}.neg{color:#dc2626}.muted{color:#9ca3af}.blue{color:#1d4ed8}.purple{color:#7c3aed}
+      .total-row td{font-size:13px;font-weight:800;padding-top:8px;border-top:2px solid #111}
+      .total-row td.val{color:#059669}
+      .mmk-row td{font-size:12px;font-weight:700;color:#7c3aed;padding-top:5px}
+      .note{font-size:8px;color:#9ca3af;margin-left:6px;font-weight:400}
+      .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;margin-bottom:12px}
+      .info-item .ilbl{font-size:8.5px;color:#9ca3af;margin-bottom:1px}
+      .info-item .ival{font-size:11px;font-weight:600}
+      .bank-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;margin-top:10px;font-size:10.5px;line-height:1.8}
+      .bank-label{font-size:8.5px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px}
+      .sig-row{display:flex;justify-content:space-between;margin-top:36px;padding-top:10px;border-top:1px solid #e5e7eb}
+      .sig-box{text-align:center;width:160px}
+      .sig-line{border-top:1px solid #000;padding-top:6px;margin-top:30px;font-size:9.5px;color:#555}
+      @media print{body{padding:16px;max-width:100%}}
+    </style></head>
+    <body>
+      ${getLH()}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <h1>INDIVIDUAL PAYROLL SLIP</h1>
+          <div class="subtitle">Salary Month: <b style="color:#6b21a8">${p.month||'—'}</b> &nbsp;·&nbsp; Bill Ref: <b>${p.slipId||'—'}</b></div>
         </div>
-        <div class="h">BANKING DETAILS</div>
-        <p>Bank: ${p.bankName}<br/>Account: ${p.bankAccNo}<br/>Beneficiary: ${p.bankAccName}</p>
-        <div style="margin-top:60px;display:flex;justify-content:space-between">
-          <div style="text-align:center;width:150px;border-top:1px solid #000;padding-top:10px">Accountant</div>
-          <div style="text-align:center;width:150px;border-top:1px solid #000;padding-top:10px">Crew Signature</div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:#9ca3af">Issue Date</div>
+          <div style="font-size:11px;font-weight:700">${p.date||new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
         </div>
-      </body></html>`);
+      </div>
+
+      <div class="section">
+        <div class="section-title">Crew Information</div>
+        <div class="info-grid">
+          <div class="info-item"><div class="ilbl">Full Name</div><div class="ival">${p.crewName||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Crew ID</div><div class="ival">${p.crewId||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Rank / Position</div><div class="ival">${p.rank||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Vessel</div><div class="ival">${p.vessel||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Client / Ship Owner</div><div class="ival">${p.client||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Sign-On Date</div><div class="ival">${p.joinDate||'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Service Period</div><div class="ival">${p.billFrom?`${p.billFrom} → ${p.billTo}`:'—'}</div></div>
+          <div class="info-item"><div class="ilbl">Days on Board</div><div class="ival">${p.daysOnBoard?`${p.daysOnBoard} of ${p.daysOfMonth} days`:'—'}</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Salary &amp; Earnings</div>
+        <table>
+          ${row('Basic Salary (Contract)', fmtUSD(p.salary), 'blue')}
+          ${Number(p.bonus)>0        ? row('Bonus / Allowance', fmtUSD(p.bonus), 'pos') : ''}
+          ${Number(p.leavePayRefunded)>0 ? row('Leave Pay (Refunded)', fmtUSD(p.leavePayRefunded), 'pos') : ''}
+          ${Number(p.pdeFees)>0      ? row('PDE Fees (Reimbursed)', fmtUSD(p.pdeFees), 'pos') : ''}
+          ${Number(p.visaFees)>0     ? row('Visa Fees (Reimbursed)', fmtUSD(p.visaFees), 'pos') : ''}
+          ${Number(p.workingGear)>0  ? row('Working Gear Allowance', fmtUSD(p.workingGear), 'pos') : ''}
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Departure (DEP) Fees</div>
+        <table>
+          ${row('Total DEP Fees (One-time)',   fmtUSD(Number(p.paidDepFees||0) + Number(p.balanceDepFees||0) + Number(p.depFeeDed||0)), 'muted', 'one-time departure fee')}
+          ${row('Previously Paid',             fmtUSD(p.paidDepFees), 'muted')}
+          ${Number(p.depFeeDed)>0 ? row('Deducted This Month',       fmtUSD(p.depFeeDed), 'neg') : row('Deducted This Month', '—', 'muted')}
+          ${Number(p.balanceDepFees)>0 ? row('Remaining Balance', fmtUSD(p.balanceDepFees), 'neg') : row('Remaining Balance', 'Fully Settled', 'pos')}
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Leave Pay</div>
+        <table>
+          ${row('Leave Pay Deducted (This Month)', fmtUSD(p.actLeavePay), Number(p.actLeavePay)>0?'neg':'muted', 'held by company')}
+          ${row('Leave Pay Accumulated (Balance)', fmtUSD(p.accumulatedLeavePay), 'blue', 'returnable on sign-off')}
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Net Pay Calculation (USD)</div>
+        <table>
+          ${row('Basic Salary',              fmtUSD(p.salary))}
+          ${Number(p.bonus)>0 ? row('+ Bonus / Other Allowances', fmtUSD(p.bonus), 'pos') : ''}
+          ${Number(p.depFeeDed)>0 ? row('− DEP Fee Deducted', fmtUSD(p.depFeeDed), 'neg') : ''}
+          ${Number(p.actLeavePay)>0 ? row('− Leave Pay Deducted', fmtUSD(p.actLeavePay), 'neg') : ''}
+          ${Number(p.otherDed)>0 ? row('− Other Deductions', fmtUSD(p.otherDed), 'neg') : ''}
+          ${Number(p.extraBonus)>0 ? row('+ Extra Allowance', fmtUSD(p.extraBonus), 'pos') : ''}
+          ${bankChargeUSD>0 ? row(`− Bank Charge (USD)`, fmtUSD(bankChargeUSD), 'neg', p.salary<200?'exempted (salary < $200)':'standard 5 USD') : ''}
+          ${divider}
+          <tr class="total-row">
+            <td class="lbl">NET PAY TO CREW (USD)</td>
+            <td class="val pos">${fmtUSD(p.total)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="section-title">MMK Conversion</div>
+        <table>
+          ${row('Net Pay (USD)',             fmtUSD(p.total))}
+          ${row('Exchange Rate',             `${Number(usedRate).toLocaleString()} MMK / 1 USD`)}
+          ${row('Converted Amount',          fmtMMK(Number(p.total) * usedRate))}
+          ${row('− Bank Transfer Charge',    fmtMMK(bankChargeMMK), 'neg', 'fixed')}
+          ${divider}
+          <tr class="mmk-row">
+            <td class="lbl" style="font-size:12px;font-weight:700">NET RECEIVABLE (MMK)</td>
+            <td class="val purple">${fmtMMK(netMMK)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="bank-box">
+        <div class="bank-label" style="margin-bottom:6px">Payment Details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
+          <div><span style="color:#9ca3af">Method: </span><b>${p.type==='cash'?'Cash (Office Pickup)':'Bank Transfer'}</b></div>
+          <div><span style="color:#9ca3af">Bank: </span><b>${p.bankName||'—'}</b></div>
+          <div><span style="color:#9ca3af">Account No: </span><b>${p.bankAccNo||'—'}</b></div>
+          <div><span style="color:#9ca3af">Account Name: </span><b>${p.bankAccName||'—'}</b></div>
+        </div>
+        ${p.remark ? `<div style="margin-top:6px;font-size:10px;color:#6b7280"><b>Note:</b> ${p.remark}</div>` : ''}
+      </div>
+
+      <div class="sig-row">
+        <div class="sig-box"><div class="sig-line">Prepared By (Accountant)</div></div>
+        <div class="sig-box"><div class="sig-line">Approved By (Admin)</div></div>
+        <div class="sig-box"><div class="sig-line">Crew Signature &amp; Date</div></div>
+      </div>
+    </body></html>`);
     w.document.close();
     setTimeout(() => w.print(), 500);
   };
@@ -400,13 +566,13 @@ function App() {
                 style={{
                   display: "flex", alignItems: "center",
                   gap: 9,
-                  padding: sb ? "7px 10px" : "8px 0",
+                  padding: sb ? "6px 8px" : "7px 0",
                   width: "100%",
-                  borderRadius: 8,
-                  border: isActive ? `1px solid rgba(14,165,233,0.25)` : "1px solid transparent",
+                  borderRadius: 9,
+                  border: isActive ? `1px solid rgba(14,165,233,0.22)` : "1px solid transparent",
                   cursor: "pointer",
                   transition: "all 0.18s",
-                  background: isActive ? `rgba(14,165,233,0.12)` : "transparent",
+                  background: isActive ? `rgba(14,165,233,0.1)` : "transparent",
                   color: isActive ? C.acc : C.txM,
                   fontSize: 12,
                   fontWeight: isActive ? 600 : 400,
@@ -423,12 +589,31 @@ function App() {
                     boxShadow: `0 0 8px ${C.pri}`,
                   }} />
                 )}
+                {/* Glassmorphism icon container */}
                 <span style={{
-                  fontSize: 15, flexShrink: 0,
-                  marginLeft: isActive ? 5 : 3,
-                  filter: isActive ? "drop-shadow(0 0 4px rgba(56,189,248,0.6))" : "none",
-                  transition: "filter 0.2s",
-                }}>{n.icon}</span>
+                  width: 28, height: 28,
+                  borderRadius: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginLeft: isActive ? 4 : 2,
+                  background: isActive
+                    ? `rgba(14,165,233,0.18)`
+                    : `rgba(255,255,255,0.05)`,
+                  border: isActive
+                    ? `1px solid rgba(14,165,233,0.35)`
+                    : `1px solid rgba(255,255,255,0.08)`,
+                  backdropFilter: "blur(4px)",
+                  WebkitBackdropFilter: "blur(4px)",
+                  transition: "all 0.18s",
+                  boxShadow: isActive
+                    ? `0 2px 8px rgba(14,165,233,0.2), inset 0 1px 0 rgba(255,255,255,0.1)`
+                    : `inset 0 1px 0 rgba(255,255,255,0.06)`,
+                  color: isActive ? C.acc : C.txM,
+                }}>
+                  {n.icon}
+                </span>
                 {sb && (
                   <span style={{
                     whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
@@ -584,7 +769,7 @@ function App() {
           {tab === "crew"      && <CrewV {...p} />}
           {tab === "billing"   && <BillV {...p} />}
           {tab === "reconcile" && <ReconV {...p} />}
-          {tab === "dist"      && <DistV {...p} onManualPayment={p.createManualPayment} />}
+          {tab === "dist"      && <DistV {...p} onManualPayment={p.createManualPayment} fsUploadFile={fsUploadFile} />}
           {tab === "users" && userRole === "admin" && <UserManagement currentUser={currentUser} showT={showT} />}
         </div>
 
@@ -683,7 +868,29 @@ function Dash({ crew, bills, payments, crewPay, slips, setTab, selectedMonth, se
 function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, showT, vessels, clients, fs, bulkUpload, migrating }) {
   const [form, setForm] = useState({});
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none", width: "100%", boxSizing: "border-box" };
-  const save = async () => { if (!form.name) return; const f = { ...form, ownerPaid: Number(form.ownerPaid) || 0, salary: Number(form.salary) || 0, office: Number(form.office) || 0, manningFees: Number(form.manningFees) || 0 }; await fs.setD("crew", f.id, f); setModal(null); showT(`${f.name} saved to Firestore`); };
+  const save = async () => {
+    if (!form.name) return;
+    // Pick primary bank from banks array (first entry) or use top-level fields
+    const primaryBank = (form.banks && form.banks.length > 0) ? form.banks[0] : {};
+    const f = {
+      ...form,
+      ownerPaid:    Number(form.ownerPaid)    || 0,
+      salary:       Number(form.salary)       || 0,
+      office:       Number(form.office)       || 0,
+      manningFees:  Number(form.manningFees)  || 0,
+      leavePay:     Number(form.leavePay)     || 0,
+      paidDepFees:  Number(form.paidDepFees)  || 0,
+      balanceDepFees: Number(form.balanceDepFees) || 0,
+      accumulatedLeavePay: Number(form.accumulatedLeavePay) || 0,
+      // Always sync top-level bank fields from the banks array primary entry
+      bankName:    form.bankName    || primaryBank.bankName    || "",
+      bankAccNo:   form.bankAccNo   || primaryBank.bankAccNo   || "",
+      bankAccName: form.bankAccName || primaryBank.bankAccName || "",
+    };
+    await fs.setD("crew", f.id, f);
+    setModal(null);
+    showT(`${f.name} saved to Firestore`);
+  };
   return <div>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
       <span style={{ fontSize: 11.5, color: C.txM }}>{filtered.length}/{crew.length} crew members</span>
@@ -694,13 +901,13 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
           if (fs) { for (const c of crew) { if (c.remark) await fs.upD("crew", c.id, { remark: "" }); } showT("All remarks cleared successfully"); }
         }}>Clear Remarks</Btn>
         <Btn v="sec" onClick={() => document.getElementById("csv-upload").click()} disabled={migrating}>{migrating ? "Uploading..." : "Bulk CSV Import"}</Btn>
-        <Btn onClick={() => { setForm({ id: `C${String(crew.length + 1).padStart(3, "0")}`, no: crew.length + 1, name: "", rank: "", ownerPaid: 0, vessel: "", client: "", joinDate: "", salary: 0, office: 0, paidDepFees: 0, balanceDepFees: 0, manningFees: 0, accumulatedLeavePay: 0, remark: "", status: "Onboard", allotmentType: "bank", banks: [{ id: "B1", bankName: "", bankAccNo: "", bankAccName: "", label: "Primary" }], bankName: "", bankAccNo: "", bankAccName: "" }); setModal("add"); }}>+ Add New</Btn>
+        <Btn onClick={() => { setForm({ id: `C${String(crew.length + 1).padStart(3, "0")}`, no: crew.length + 1, name: "", rank: "", ownerPaid: 0, vessel: "", client: "", joinDate: "", salary: 0, office: 0, paidDepFees: 0, balanceDepFees: 0, manningFees: 0, leavePay: 0, accumulatedLeavePay: 0, remark: "", status: "Onboard", allotmentType: "bank", banks: [{ id: "B1", bankName: "", bankAccNo: "", bankAccName: "", label: "Primary" }], bankName: "", bankAccNo: "", bankAccName: "" }); setModal("add"); }}>+ Add New</Btn>
       </div>
     </div>
     <Filt {...{ fN, setFN, fV, setFV, fC, setFC, vessels, clients }} />
     <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr>{["No","ID","Name","Rank","Vessel","Client","Join","OwnerPaid","Salary","DEP FEES","Paid Dep","Bal Dep","Manning","Leave Pay(Acc)","Bank","Acc No","Acc Name","Type","Remark",""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+        <thead><tr>{["No","ID","Name","Rank","Vessel","Client","Join","OwnerPaid","Salary","DEP FEES","Paid Dep","Bal Dep","Manning","Leave Pay","Leave Pay (Acc)","Bank","Acc No","Acc Name","Type","Remark",""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
         <tbody>{filtered.map(c => (
           <tr key={c.id || c.no} {...trHover}>
             <td style={tdS}>{c.no}</td>
@@ -716,23 +923,43 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
             <td style={tdS}>${(c.paidDepFees || 0).toLocaleString()}</td>
             <td style={tdS}>${(c.balanceDepFees || 0).toLocaleString()}</td>
             <td style={tdS}>${(c.manningFees || 0).toLocaleString()}</td>
-            <td style={tdS}>${(c.accumulatedLeavePay || 0).toLocaleString()}</td>
+            <td style={tdS}>${(c.leavePay || 0).toLocaleString()}</td>
+            <td style={{ ...tdS, color: C.inf, fontWeight: 500 }}>${(c.accumulatedLeavePay || 0).toLocaleString()}</td>
             <td style={tdS}>{c.bankName || "—"}</td>
             <td style={tdS}>{c.bankAccNo || "—"}</td>
             <td style={tdS}>{c.bankAccName || "—"}</td>
             <td style={{ ...tdS, textTransform: "capitalize" }}>{c.allotmentType || "bank"}</td>
             <td style={{ ...tdS, fontSize: 10, color: C.txD, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis" }} title={c.remark}>{c.remark || "—"}</td>
-            <td style={tdS}><Btn v="ghost" onClick={() => { setForm({ ...c }); setModal("edit"); }}>Edit</Btn></td>
+            <td style={tdS}><Btn v="ghost" onClick={() => {
+              const primaryBank = (c.banks && c.banks.length > 0) ? c.banks[0] : {};
+              setForm({
+                ...c,
+                bankName:    c.bankName    || primaryBank.bankName    || "",
+                bankAccNo:   c.bankAccNo   || primaryBank.bankAccNo   || "",
+                bankAccName: c.bankAccName || primaryBank.bankAccName || "",
+                banks: c.banks || [{ id: "B1", bankName: c.bankName || "", bankAccNo: c.bankAccNo || "", bankAccName: c.bankAccName || "", label: "Primary" }],
+              });
+              setModal("edit");
+            }}>Edit</Btn></td>
           </tr>
         ))}</tbody>
       </table>
     </div>
     {(modal === "add" || modal === "edit") && <Mod title={modal === "add" ? "Add Crew" : "Edit Crew"} onClose={() => setModal(null)}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["DEP FEES","office"],["Paid Dep Fees","paidDepFees"],["Bal Dep Fees","balanceDepFees"],["Manning Fees","manningFees"],["Leave Pay (Acc)","accumulatedLeavePay"],["Remark","remark"]].map(([l, k, d]) => (
+        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["DEP FEES","office"],["Paid Dep Fees","paidDepFees"],["Bal Dep Fees","balanceDepFees"],["Manning Fees","manningFees"],["Leave Pay / Month","leavePay"],["Leave Pay (Acc.) — auto","accumulatedLeavePay",false,true],["Remark","remark"]].map(([l, k, d, readOnly]) => (
           <div key={k}>
             <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>{l}</label>
-            <input value={form[k] ?? ""} disabled={d} type={["ownerPaid","salary","office","paidDepFees","balanceDepFees","manningFees","accumulatedLeavePay"].includes(k) ? "number" : "text"} onChange={e => setForm({ ...form, [k]: e.target.value })} style={{ ...inp, opacity: d ? 0.5 : 1 }} />
+            <input
+              value={form[k] ?? ""}
+              disabled={d}
+              readOnly={readOnly}
+              title={readOnly ? "Auto-accumulated from payroll deductions. Do not edit manually." : undefined}
+              type={["ownerPaid","salary","office","paidDepFees","balanceDepFees","manningFees","leavePay","accumulatedLeavePay"].includes(k) ? "number" : "text"}
+              onChange={e => !readOnly && setForm({ ...form, [k]: e.target.value })}
+              style={{ ...inp, opacity: (d || readOnly) ? 0.5 : 1, cursor: readOnly ? "not-allowed" : "text",
+                color: readOnly ? C.inf : C.txt, fontWeight: readOnly ? 600 : 400 }}
+            />
           </div>
         ))}
         <div>
@@ -751,9 +978,9 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
           </div>
           {(form.banks || []).map((b, i) => (
             <div key={b.id} style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1.5fr 80px 30px", gap: 6, marginBottom: 8, alignItems: "end" }}>
-              <div><label style={{ fontSize: 9, color: C.txD }}>Bank Name</label><select value={b.bankName || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankName = e.target.value; setForm({ ...form, banks: nb }); }} style={{ ...inp, height: 32, fontSize: 11 }}><option value="">Select</option>{["KBZ","AYA","A Bank","CB","MAB","Yoma","Kpay","Aya Pay","Other"].map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
-              <div><label style={{ fontSize: 9, color: C.txD }}>Acc No</label><input value={b.bankAccNo || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankAccNo = e.target.value; setForm({ ...form, banks: nb }); }} style={{ ...inp, height: 32, fontSize: 11 }} /></div>
-              <div><label style={{ fontSize: 9, color: C.txD }}>Acc Name</label><input value={b.bankAccName || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankAccName = e.target.value; setForm({ ...form, banks: nb }); }} style={{ ...inp, height: 32, fontSize: 11 }} /></div>
+              <div><label style={{ fontSize: 9, color: C.txD }}>Bank Name</label><select value={b.bankName || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankName = e.target.value; const upd = { ...form, banks: nb }; if (i === 0) { upd.bankName = e.target.value; } setForm(upd); }} style={{ ...inp, height: 32, fontSize: 11 }}><option value="">Select</option>{["KBZ","AYA","A Bank","CB","MAB","Yoma","Kpay","Aya Pay","Other"].map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>
+              <div><label style={{ fontSize: 9, color: C.txD }}>Acc No</label><input value={b.bankAccNo || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankAccNo = e.target.value; const upd = { ...form, banks: nb }; if (i === 0) { upd.bankAccNo = e.target.value; } setForm(upd); }} style={{ ...inp, height: 32, fontSize: 11 }} /></div>
+              <div><label style={{ fontSize: 9, color: C.txD }}>Acc Name</label><input value={b.bankAccName || ""} onChange={e => { const nb = [...form.banks]; nb[i].bankAccName = e.target.value; const upd = { ...form, banks: nb }; if (i === 0) { upd.bankAccName = e.target.value; } setForm(upd); }} style={{ ...inp, height: 32, fontSize: 11 }} /></div>
               <div><label style={{ fontSize: 9, color: C.txD }}>Label</label><input value={b.label || ""} placeholder="Primary" onChange={e => { const nb = [...form.banks]; nb[i].label = e.target.value; setForm({ ...form, banks: nb }); }} style={{ ...inp, height: 32, fontSize: 11 }} /></div>
               <Btn v="ghost" size="sm" onClick={() => { const nb = form.banks.filter((_, idx) => idx !== i); setForm({ ...form, banks: nb }); }} style={{ color: C.err, padding: 0 }}>✕</Btn>
             </div>
@@ -794,7 +1021,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
       const actLeavePay = dob === dim ? maxLp : Math.round((maxLp/dim)*dob*100)/100;
       const depFeeDed = c.balanceDepFees > 0 ? c.balanceDepFees : 0;
       const netCrewPay = Math.max(0, ha - actManning - actLeavePay - depFeeDed);
-      return { ...c, from: fmtD(1,m,y), to: fmtD(dim,m,y), daysOnBoard: dob, daysOfMonth: dim, actualHA: ha, pob:0, bonus:0, pdeFees:0, visaFees:0, workingGear:0, totalPayment: ha, actManning, actLeavePay, depFeeDed, netCrewPay, billRemark: c.remark||"" };
+      return { ...c, from: fmtD(1,m,y), to: fmtD(dim,m,y), daysOnBoard: dob, daysOfMonth: dim, actualHA: ha, pob:0, bonus:0, pdeFees:0, visaFees:0, workingGear:0, totalPayment: ha, actManning, actLeavePay, depFeeDed, netCrewPay, billRemark: c.remark||"", pobNote: "" };
     }).filter(r => r.daysOnBoard > 0);
     const vName = bc.length > 0 ? (bc.every(c => c.vessel === bc[0].vessel) ? bc[0].vessel : "Multiple Vessels") : "No Vessel";
     const bill = { id: `BILL-${String(bills.length+1).padStart(3,"0")}`, client: sc, vessel: vName, month: mo, from: fmtD(1,m,y), to: fmtD(dim,m,y), crew: bc, totalHA: Math.round(bc.reduce((s,c)=>s+c.actualHA,0)*100)/100, total: Math.round(bc.reduce((s,c)=>s+c.totalPayment,0)*100)/100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo:"840-096-0029-001674-501", accName:"Mahar Unity (Thailand) Company Limited", bankName:"Bangkok Bank", swift:"BKKBTHBK", remark:"Manning fee calculated upon 30 days, no overlap" } };
@@ -830,15 +1057,17 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
         if (String(c.id||c.name) !== ident) return c;
         const isNum = field !== "billRemark";
         const u = { ...c, [field]: isNum ? (Number(val)||0) : val };
-        if (field === "daysOnBoard") {
-          u.actualHA = u.daysOnBoard===u.daysOfMonth?(u.ownerPaid||0):Math.round(((u.ownerPaid||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
-          u.actManning = u.daysOnBoard===u.daysOfMonth?(u.manningFees||0):Math.round(((u.manningFees||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
-          const isOfc=/master|chief|officer|engineer|cadet/i.test(u.rank||"");
-          const maxLp=(u.salary||0)*(isOfc?0.05:0.10);
-          u.actLeavePay=u.daysOnBoard===u.daysOfMonth?maxLp:Math.round((maxLp/u.daysOfMonth)*u.daysOnBoard*100)/100;
+        if (field === "daysOnBoard" || field === "pob" || field === "bonus" || field === "pdeFees" || field === "visaFees" || field === "workingGear") {
+          if (field === "daysOnBoard") {
+            u.actualHA = u.daysOnBoard===u.daysOfMonth?(u.ownerPaid||0):Math.round(((u.ownerPaid||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
+            u.actManning = u.daysOnBoard===u.daysOfMonth?(u.manningFees||0):Math.round(((u.manningFees||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
+            const isOfc=/master|chief|officer|engineer|cadet/i.test(u.rank||"");
+            const maxLp=(u.salary||0)*(isOfc?0.05:0.10);
+            u.actLeavePay=u.daysOnBoard===u.daysOfMonth?maxLp:Math.round((maxLp/u.daysOfMonth)*u.daysOnBoard*100)/100;
+          }
+          u.totalPayment=Math.max(0,(u.actualHA||0)+(u.bonus||0)+(u.pdeFees||0)+(u.visaFees||0)+(u.workingGear||0)-(u.pob||0));
+          u.netCrewPay=Math.max(0,u.totalPayment-(u.actManning||0)-(u.actLeavePay||0)-(u.depFeeDed||0));
         }
-        u.totalPayment=(u.actualHA||0)+(u.pob||0)+(u.bonus||0)+(u.pdeFees||0)+(u.visaFees||0)+(u.workingGear||0);
-        u.netCrewPay=Math.max(0,u.totalPayment-(u.actManning||0)-(u.actLeavePay||0)-(u.depFeeDed||0));
         return u;
       });
       const newTHA=Math.round(uc.reduce((s,c)=>s+(c.actualHA||0),0)*100)/100;
@@ -858,7 +1087,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
     link.download=`${safeName}.csv`; document.body.appendChild(link); link.click();
     setTimeout(()=>{document.body.removeChild(link);URL.revokeObjectURL(url);},100);
   };
-  const exportPDF = (b) => { const trs=(b.crew||[]).map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.joinDate||''}</td><td>${c.ownerPaid||0}</td><td>${c.from}</td><td>${c.to}</td><td style="color:${c.daysOnBoard<c.daysOfMonth?'#F59E0B':'inherit'}">${c.daysOnBoard}</td><td>${c.daysOfMonth}</td><td>${(c.actualHA||0).toFixed(2)}</td><td>${c.pob||0}</td><td>${c.bonus||0}</td><td>${c.pdeFees||0}</td><td>${c.visaFees||0}</td><td>${c.workingGear||0}</td><td><b>${(c.totalPayment||0).toFixed(2)}</b></td><td>${c.billRemark||''}</td></tr>`).join(''); const html=`<!DOCTYPE html><html><head><title>${b.id}</title><style>*{font-family:'Inter',sans-serif;font-size:10px}body{margin:30px}h2{font-size:14px;margin-bottom:12px;color:#2563eb;border-bottom:1px solid #eee;padding-bottom:5px}.info{color:#666;margin-bottom:15px;display:flex;justify-content:space-between}table{border-collapse:collapse;width:100%;margin-bottom:20px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f9fafb;text-align:center;font-size:9px;font-weight:700;color:#374151}td{text-align:right}td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}.total td{font-weight:bold;background:#f3f4f6;color:#111827}.bank{margin-top:20px;padding:12px;border:1px solid #e5e7eb;font-size:9.5px;background:#f8fafc;border-radius:6px;line-height:1.6}@media print{body{margin:20px}}</style></head><body>${getLH()}<h2>${b.client} — ${b.month} MONTHLY BILL (${b.id})</h2><div class="info"><span><b>Period:</b> ${b.from} — ${b.to}</span><span><b>Crew:</b> ${(b.crew||[]).length} &nbsp;|&nbsp; <b>Date:</b> ${b.date||''}</span></div><table><thead><tr><th>#</th><th>Name</th><th>Sign On</th><th>Wages/M</th><th>From</th><th>To</th><th>Days Board</th><th>Days/M</th><th>Actual HA</th><th>POB</th><th>Bonus</th><th>PDE</th><th>VISA</th><th>WG</th><th>Total</th><th>Remark</th></tr></thead><tbody>${trs}</tbody><tfoot><tr class="total"><td colspan="14" style="text-align:right">TOTAL USD</td><td>${(b.total||0).toFixed(2)}</td><td></td></tr></tfoot></table><div class="bank"><b>BANK REMITTANCE DETAILS:</b><br/>Account No: ${b.bankInfo?.accNo} | Account Name: ${b.bankInfo?.accName} | Bank: ${b.bankInfo?.bankName} | SWIFT: <b>${b.bankInfo?.swift}</b><br/>REMARK: ${b.bankInfo?.remark||"Manning fee calculated upon 30 days, no overlap"}</div></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); };
+  const exportPDF = (b) => { const trs=(b.crew||[]).map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.joinDate||''}</td><td>${c.ownerPaid||0}</td><td>${c.from}</td><td>${c.to}</td><td style="color:${c.daysOnBoard<c.daysOfMonth?'#F59E0B':'inherit'}">${c.daysOnBoard}</td><td>${c.daysOfMonth}</td><td>${(c.actualHA||0).toFixed(2)}</td><td style="color:${c.pob>0?'#dc2626':'inherit'}">${c.pob||0}</td><td>${c.bonus||0}</td><td>${c.pdeFees||0}</td><td>${c.visaFees||0}</td><td>${c.workingGear||0}</td><td><b>${(c.totalPayment||0).toFixed(2)}</b></td><td>${c.billRemark||''}</td></tr>`).join(''); const html=`<!DOCTYPE html><html><head><title>${b.id}</title><style>*{font-family:'Inter',sans-serif;font-size:10px}body{margin:30px}h2{font-size:14px;margin-bottom:12px;color:#2563eb;border-bottom:1px solid #eee;padding-bottom:5px}.info{color:#666;margin-bottom:15px;display:flex;justify-content:space-between}table{border-collapse:collapse;width:100%;margin-bottom:20px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f9fafb;text-align:center;font-size:9px;font-weight:700;color:#374151}td{text-align:right}td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}.total td{font-weight:bold;background:#f3f4f6;color:#111827}.bank{margin-top:20px;padding:12px;border:1px solid #e5e7eb;font-size:9.5px;background:#f8fafc;border-radius:6px;line-height:1.6}@media print{body{margin:20px}}</style></head><body>${getLH()}<h2>${b.client} — ${b.month} MONTHLY BILL (${b.id})</h2><div class="info"><span><b>Period:</b> ${b.from} — ${b.to}</span><span><b>Crew:</b> ${(b.crew||[]).length} &nbsp;|&nbsp; <b>Date:</b> ${b.date||''}</span></div><table><thead><tr><th>#</th><th>Name</th><th>Sign On</th><th>Wages/M</th><th>From</th><th>To</th><th>Days Board</th><th>Days/M</th><th>Actual HA</th><th>POB(-)</th><th>Bonus</th><th>PDE</th><th>VISA</th><th>WG</th><th>Total</th><th>Remark</th></tr></thead><tbody>${trs}</tbody><tfoot><tr class="total"><td colspan="14" style="text-align:right">TOTAL USD</td><td>${(b.total||0).toFixed(2)}</td><td></td></tr></tfoot></table><div class="bank"><b>BANK REMITTANCE DETAILS:</b><br/>Account No: ${b.bankInfo?.accNo} | Account Name: ${b.bankInfo?.accName} | Bank: ${b.bankInfo?.bankName} | SWIFT: <b>${b.bankInfo?.swift}</b><br/>REMARK: ${b.bankInfo?.remark||"Manning fee calculated upon 30 days, no overlap"}</div></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); };
   return <div>
     <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}>
       <h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Generate Monthly Bill</h4>
@@ -897,7 +1126,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
               <thead>
                 <tr>
                   {b.status === "Draft" && <th style={{ ...thS, width: 30 }}></th>}
-                  {["Name","Sign On Date","Wages/M","From","To","Days on Board","Days of Month","Actual HA","POB","Bonus","PDE Fees","VISA","WG","Owner Total","Manning(-)","Leave(-)","DepFee(-)","Crew Net","Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px", background: ["Manning(-)","Leave(-)","DepFee(-)","Crew Net"].includes(h) ? "#f1f5f9" : undefined }}>{h}</th>)}
+                  {["Name","Sign On Date","Wages/M","From","To","Days on Board","Days of Month","Actual HA","POB(-)","Bonus","PDE Fees","VISA","WG","Owner Total","Manning(-)","Leave(-)","DepFee(-)","Crew Net","Remark"].map(h => <th key={h} style={{ ...thS, fontSize: 9, padding: "6px 4px", background: ["Manning(-)","Leave(-)","DepFee(-)","Crew Net","POB(-)"].includes(h) ? "#f1f5f9" : undefined }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -1059,7 +1288,7 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk, genPa
 }
 
 // ============== DISTRIBUTION HUB ==============
-function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, payments, bills, genPayrollFromBill, onManualPayment, markProcessed, markPaid, approve, printPayslip, selectedMonth }) {
+function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, payments, bills, genPayrollFromBill, onManualPayment, markProcessed, markPaid, approve, printPayslip, selectedMonth, fsUploadFile }) {
   const [tab, setHubTab] = useState("approval");
   const [isManualModalOpen, setManualModalOpen] = useState(false);
   const [manualData, setManualData] = useState({ crewId: "", amount: "", vessel: "", remark: "" });
@@ -1082,15 +1311,105 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
   const isCorrectMonth = (m) => !m || !selectedMonth || m === selectedMonth || m.includes(selectedMonth) || selectedMonth.includes(m);
   const approvedPayments = crewPay.filter(p => p.status === "Approved");
   const processedPayments = crewPay.filter(p => p.status === "Processed");
+
+  // ── Edit payroll modal state ──────────────────────────────────────────
+  const [editingPayroll, setEditingPayroll] = useState(null); // payroll record being edited
+  const [editForm, setEditForm] = useState({});
+
+  const openEditPayroll = (p) => {
+    setEditForm({
+      // Editable earnings
+      salary:      p.salary      || 0,
+      actualHA:    p.actualHA    || 0,
+      bonus:       p.bonus       || 0,
+      pdeFees:     p.pdeFees     || 0,
+      visaFees:    p.visaFees    || 0,
+      workingGear: p.workingGear || 0,
+      actLeavePay: p.leavePay  || p.actLeavePay || 0,   // from registry
+      accumulatedLeavePay: p.accumulatedLeavePay || 0,
+      leavePayRefunded: p.leavePayRefunded || 0,
+      // Editable deductions
+      office:        p.office        || 0,
+      paidDepFees:   p.paidDepFees   || 0,
+      balanceDepFees:p.balanceDepFees|| 0,
+      depFeeDed:     p.depFeeDed     || 0,
+      // Adjustment fields
+      total:       p.total      || 0,
+      bankCharge:  p.bankCharge || 0,
+      otherDed:    p.otherDed   || 0,
+      extraBonus:  p.extraBonus || 0,
+      remark:      p.remark     || "",
+      bankName:    p.bankName    || "",
+      bankAccNo:   p.bankAccNo   || "",
+      bankAccName: p.bankAccName || "",
+    });
+    setEditingPayroll(p);
+  };
+
+  const saveAndSubmit = async () => {
+    if (!editingPayroll) return;
+    const netTotal = Math.max(0,
+      Number(editForm.total) + Number(editForm.extraBonus||0)
+      - Number(editForm.bankCharge) - Number(editForm.otherDed)
+    );
+    const up = {
+      // Earnings
+      salary:       Number(editForm.salary),
+      actualHA:     Number(editForm.actualHA),
+      bonus:        Number(editForm.bonus),
+      pdeFees:      Number(editForm.pdeFees),
+      visaFees:     Number(editForm.visaFees),
+      workingGear:  Number(editForm.workingGear),
+      actLeavePay:  Number(editForm.actLeavePay),
+      accumulatedLeavePay: Number(editForm.accumulatedLeavePay),
+      leavePayRefunded: Number(editForm.leavePayRefunded||0),
+      // Deductions
+      office:        Number(editForm.office),
+      paidDepFees:   Number(editForm.paidDepFees),
+      balanceDepFees:Number(editForm.balanceDepFees),
+      depFeeDed:     Number(editForm.depFeeDed),
+      // Adjustments & final
+      total:        netTotal,
+      grossTotal:   Number(editForm.total),
+      bankCharge:   Number(editForm.bankCharge),
+      otherDed:     Number(editForm.otherDed),
+      extraBonus:   Number(editForm.extraBonus||0),
+      remark:       editForm.remark,
+      bankName:     editForm.bankName,
+      bankAccNo:    editForm.bankAccNo,
+      bankAccName:  editForm.bankAccName,
+      status:       "ReadyForApproval",
+      submittedAt:  new Date().toISOString(),
+    };
+    setCrewPay(prev => prev.map(x => x.id === editingPayroll.id ? { ...x, ...up } : x));
+    if (fsOk) await fs.upD("crewPayments", editingPayroll.id, up);
+    setEditingPayroll(null);
+    showT(`${editingPayroll.crewName} — submitted for approval ✓`);
+  };
+
+  const readyForApproval = crewPay.filter(p => p.status === "ReadyForApproval");
   const payrolls = useMemo(() => {
     const groups = {};
-    crewPay.filter(p => isCorrectMonth(p.month) && ["Approved","Processed","Paid"].includes(p.status)).forEach(p => {
-      const gKey = p.slipId || "MANUAL";
-      if (!groups[gKey]) { const bill = bills.find(b => b.id === p.slipId) || { id: "MANUAL", client: p.client || "Manual", month: p.month, vessel: p.vessel }; groups[gKey] = { bill, payments: [], clientName: bill.client }; }
+    crewPay.filter(p => ["ReadyForApproval","Approved","Processed","Paid"].includes(p.status)).forEach(p => {
+      const gKey = p.slipId || "AD-HOC";
+      const bill = bills.find(b => b.id === p.slipId);
+      // If bill exists, only include crew that are actually in the bill
+      if (bill) {
+        const billCrewIds = new Set((bill.crew || []).map(c => String(c.id || c.crewId)));
+        if (!billCrewIds.has(String(p.crewId))) return; // skip crew not in this bill
+      }
+      if (!groups[gKey]) {
+        groups[gKey] = {
+          bill: bill || { id: gKey, client: p.client || p.vessel || "Ad-Hoc", month: p.month, vessel: p.vessel },
+          payments: [],
+          clientName: bill ? bill.client : (p.client || p.vessel || "Ad-Hoc"),
+          totalInBill: bill ? (bill.crew || []).length : 0,
+        };
+      }
       groups[gKey].payments.push(p);
     });
     return Object.values(groups);
-  }, [crewPay, bills, selectedMonth]);
+  }, [crewPay, bills]);
   const paidPayments = crewPay.filter(p => p.status === "Paid" && isCorrectMonth(p.month));
 
   return (
@@ -1099,31 +1418,82 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
         <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Payment Distribution Hub</h2>
         <Btn onClick={() => setManualModalOpen(true)}>➕ Manual Payment</Btn>
       </div>
-      <div style={{ display: "flex", borderBottom: `1px solid ${C.bdr}`, gap: 20, marginBottom: 20 }}>
-        {["approval","dist","verify","history"].map(t => (
-          <button key={t} onClick={() => setHubTab(t)} style={{ paddingBottom: 10, border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: tab===t?C.pri:C.txD, borderBottom: tab===t?`2px solid ${C.pri}`:"none", transition: "color 0.15s" }}>
-            {t==="approval"?"Approval Queue":t==="dist"?"Distribution":t==="verify"?"Verification":"Paid History"}
-            <Badge t={t==="approval"?awaitingApproval.length:t==="dist"?approvedPayments.length:t==="verify"?processedPayments.length:paidPayments.length} c={t==="history"?"green":t==="verify"?"indigo":t==="dist"?"orange":"blue"} s={{marginLeft:6}}/>
+      <div style={{ display: "flex", borderBottom: `1px solid ${C.bdr}`, gap: 20, marginBottom: 20, overflowX:"auto" }}>
+        {["edit","approval","dist","verify","history"].map(t => (
+          <button key={t} onClick={() => setHubTab(t)} style={{ paddingBottom: 10, border: "none", background: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, whiteSpace:"nowrap", color: tab===t?C.pri:C.txD, borderBottom: tab===t?`2px solid ${C.pri}`:"none", transition: "color 0.15s" }}>
+            {t==="edit"?"✏️ Edit & Submit":t==="approval"?"Admin Approval":t==="dist"?"Distribution":t==="verify"?"Verification":"Paid History"}
+            <Badge
+              t={t==="edit"?awaitingApproval.length:t==="approval"?readyForApproval.length:t==="dist"?approvedPayments.length:t==="verify"?processedPayments.length:paidPayments.length}
+              c={t==="history"?"green":t==="verify"?"indigo":t==="dist"?"orange":t==="approval"?"purple":"blue"}
+              s={{marginLeft:6}}
+            />
           </button>
         ))}
       </div>
 
+      {/* ── EDIT & SUBMIT TAB (Accountant) ── */}
+      {tab === "edit" && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:15 }}>
+            <h3 style={{ fontSize:14, margin:0 }}>Edit Payroll — Pending Records</h3>
+            <span style={{ fontSize:11, color:C.txD }}>Accountant edits amount, bank charges & deductions, then submits to Admin</span>
+          </div>
+          {!awaitingApproval.length
+            ? <div style={{ textAlign:"center", padding:40, color:C.txD }}>
+                <div style={{ fontSize:32, marginBottom:10 }}>✓</div>
+                <div>No pending payroll records</div>
+              </div>
+            : <div style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <thead><tr>{["Crew","Vessel","Bill Ref","Auto Amount","Bank","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>{awaitingApproval.map(p => (
+                    <tr key={p.id} {...trHover}>
+                      <td style={tdS}><b>{p.crewName}</b><br/><small style={{color:C.txD}}>{p.rank}</small></td>
+                      <td style={tdS}>{p.vessel || "—"}</td>
+                      <td style={{...tdS, fontSize:10, color:C.txD}}>{p.slipId}</td>
+                      <td style={{...tdS, fontWeight:700, color:C.acc}}>${(p.total||0).toLocaleString()}</td>
+                      <td style={tdS}><span style={{fontSize:10}}>{p.bankName || "—"}<br/>{p.bankAccNo || ""}</span></td>
+                      <td style={tdS}>
+                        <Btn v="sec" s={{fontSize:10}} onClick={() => openEditPayroll(p)}>✏️ Edit &amp; Submit</Btn>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+          }
+        </div>
+      )}
+
+      {/* ── ADMIN APPROVAL TAB ── */}
       {tab === "approval" && (
         <div>
-          <h3 style={{ fontSize: 14, margin: "0 0 15px" }}>Pending Approval</h3>
-          {!awaitingApproval.length ? <p style={{ textAlign:"center", padding:30, color:C.txD }}>No pending tasks.</p> : (
-            <div style={{ overflowX:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse" }}>
-              <thead><tr>{["Crew","Amount","Source","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
-              <tbody>{awaitingApproval.map(p=>(
-                <tr key={p.id} {...trHover}>
-                  <td style={tdS}><b>{p.crewName}</b><br/><small style={{color:C.txD}}>{p.vessel}</small></td>
-                  <td style={{...tdS,fontWeight:700,color:C.acc}}>${(p.total||0).toLocaleString()}</td>
-                  <td style={tdS}>{p.slipId}</td>
-                  <td style={tdS}>{userRole==="admin"?<Btn v="ok" s={{fontSize:10}} onClick={()=>approve(p.id)}>Approve</Btn>:<Badge t="Waiting for Admin" c="orange"/>}</td>
-                </tr>
-              ))}</tbody>
-            </table></div>
-          )}
+          <h3 style={{ fontSize: 14, margin: "0 0 15px" }}>Admin Approval Queue</h3>
+          {!readyForApproval.length
+            ? <p style={{ textAlign:"center", padding:30, color:C.txD }}>No payroll submitted by Accountant yet</p>
+            : <div style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse" }}>
+                  <thead><tr>{["Crew","Vessel","Gross","Bank Chg","Ded.","Bonus","Net Total","Bank","Remark","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>{readyForApproval.map(p => (
+                    <tr key={p.id} {...trHover}>
+                      <td style={tdS}><b>{p.crewName}</b><br/><small style={{color:C.txD}}>{p.rank}</small></td>
+                      <td style={tdS}>{p.vessel}</td>
+                      <td style={{...tdS,color:C.txM}}>${(p.grossTotal||p.total||0).toLocaleString()}</td>
+                      <td style={{...tdS,color:C.err}}>-${(p.bankCharge||0).toLocaleString()}</td>
+                      <td style={{...tdS,color:C.err}}>-${(p.otherDed||0).toLocaleString()}</td>
+                      <td style={{...tdS,color:C.ok}}>+${(p.bonus||0).toLocaleString()}</td>
+                      <td style={{...tdS,fontWeight:700,color:C.acc}}>${(p.total||0).toLocaleString()}</td>
+                      <td style={{...tdS,fontSize:10}}>{p.bankName}<br/>{p.bankAccNo}</td>
+                      <td style={{...tdS,fontSize:10,color:C.txD,maxWidth:100}}>{p.remark||"—"}</td>
+                      <td style={tdS}>
+                        {userRole==="admin"
+                          ? <Btn v="ok" s={{fontSize:10}} onClick={()=>approve(p.id)}>Approve</Btn>
+                          : <Badge t="Admin only" c="orange"/>}
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+          }
         </div>
       )}
 
@@ -1139,7 +1509,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
                   <td style={{...tdS,fontWeight:700,color:C.acc}}>${(p.total||0).toLocaleString()}</td>
                   <td style={tdS}>{p.type==="bank"?`${p.bankName} (${p.bankAccNo})`:"Cash Pickup"}</td>
                   <td style={tdS}><div style={{ display:"flex", gap:6 }}>
-                    <Btn v="sec" s={{fontSize:9}} onClick={()=>printPayslip(p)}>🖨️ Slip</Btn>
+                    <Btn v="sec" s={{fontSize:9}} onClick={()=>printPayslip(p, rate)}>🖨️ Slip</Btn>
                     {!p.isSplit && <Btn v="ghost" s={{fontSize:9}} onClick={()=>{ const c=crew.find(cr=>String(cr.id)===String(p.crewId))||{}; const banks=c.banks&&c.banks.length>0?c.banks:[{bankName:c.bankName,bankAccNo:c.bankAccNo,bankAccName:c.bankAccName,label:"Primary"}]; setSplitRows(banks.map((b,i)=>({...b,amount:i===0?p.total:0}))); setSplitT(p); }}>✂️ Split</Btn>}
                     <Btn s={{fontSize:9}} onClick={()=>markProcessed(p.id)}>Process Done</Btn>
                   </div></td>
@@ -1158,10 +1528,67 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
               <thead><tr>{["Crew","Amount","Signed Slip","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
               <tbody>{processedPayments.map(p=>(
                 <tr key={p.id} {...trHover}>
-                  <td style={tdS}>{p.crewName}</td>
+                  <td style={tdS}>{p.crewName}<br/><small style={{color:C.txD}}>{p.rank}</small></td>
                   <td style={{...tdS,fontWeight:700}}>${(p.total||0).toLocaleString()}</td>
-                  <td style={tdS}>{p.signedSlipUrl?<a href={p.signedSlipUrl} target="_blank" style={{color:C.pri}}>View</a>:"Missing"}</td>
-                  <td style={tdS}>{userRole==="admin"?<Btn v="ok" s={{fontSize:10}} onClick={()=>markPaid(p.id)}>Mark Paid</Btn>:<Btn v="ghost" s={{fontSize:9}} onClick={()=>{ const u=prompt("URL:",p.signedSlipUrl); if(u) markProcessed(p.id,u); }}>📎 Upload</Btn>}</td>
+                  <td style={tdS}>
+                    {p.signedSlipUrl
+                      ? <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <a href={p.signedSlipUrl} target="_blank" rel="noreferrer" style={{color:C.pri,fontSize:10}}>👁️ View Slip</a>
+                          <span style={{fontSize:9,color:C.ok}}>✓ Uploaded</span>
+                        </div>
+                      : <span style={{fontSize:10,color:C.wrn}}>⚠ Missing</span>}
+                  </td>
+                  <td style={tdS}>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      {/* File upload button */}
+                      {!p.signedSlipUrl && (
+                        <label style={{
+                          fontSize:9, padding:"4px 8px", borderRadius:5, cursor:"pointer",
+                          background:`${C.inf}15`, border:`1px solid ${C.inf}40`, color:C.inf,
+                          fontWeight:600, display:"inline-flex", alignItems:"center", gap:4,
+                        }}>
+                          📎 Upload Slip
+                          <input type="file" accept="image/*,application/pdf" style={{display:"none"}}
+                            onChange={async(e)=>{
+                              const file=e.target.files[0]; if(!file) return;
+                              showT("Uploading...","wrn");
+                              try{
+                                const url = await fsUploadFile(file,`signedSlips/${p.id}_${Date.now()}_${file.name}`);
+                                if(url){ await markProcessed(p.id, url); showT("Signed slip uploaded ✓"); }
+                                else showT("Upload failed","err");
+                              }catch(err){ showT("Upload failed","err"); }
+                            }}
+                          />
+                        </label>
+                      )}
+                      {/* Replace slip button if already uploaded */}
+                      {p.signedSlipUrl && (
+                        <label style={{
+                          fontSize:9, padding:"4px 8px", borderRadius:5, cursor:"pointer",
+                          background:`${C.txD}0a`, border:`1px solid ${C.bdr}`, color:C.txM,
+                          fontWeight:600, display:"inline-flex", alignItems:"center", gap:4,
+                        }}>
+                          🔄 Replace
+                          <input type="file" accept="image/*,application/pdf" style={{display:"none"}}
+                            onChange={async(e)=>{
+                              const file=e.target.files[0]; if(!file) return;
+                              showT("Uploading...","wrn");
+                              try{
+                                const url = await fsUploadFile(file,`signedSlips/${p.id}_${Date.now()}_${file.name}`);
+                                if(url){ await markProcessed(p.id, url); showT("Slip replaced ✓"); }
+                                else showT("Upload failed","err");
+                              }catch(err){ showT("Upload failed","err"); }
+                            }}
+                          />
+                        </label>
+                      )}
+                      {/* Admin: Mark Paid */}
+                      {userRole==="admin" && p.signedSlipUrl &&
+                        <Btn v="ok" s={{fontSize:9}} onClick={()=>markPaid(p.id)}>✓ Mark Paid</Btn>}
+                      {userRole!=="admin" && p.signedSlipUrl &&
+                        <span style={{fontSize:9,color:C.txD}}>Waiting for admin</span>}
+                    </div>
+                  </td>
                 </tr>
               ))}</tbody>
             </table></div>
@@ -1183,6 +1610,148 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
         </div>
       )}
 
+      {/* ── EDIT PAYROLL MODAL ── */}
+      {editingPayroll && (
+        <Mod title={`Edit & Submit Payroll — ${editingPayroll.crewName}`} onClose={() => setEditingPayroll(null)} w={620}>
+
+          {/* Header info bar */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:14, padding:"10px 12px", background:`${C.inf}0d`, borderRadius:8, border:`1px solid ${C.inf}25` }}>
+            {[
+              ["Bill Ref",    editingPayroll.slipId],
+              ["Vessel",      editingPayroll.vessel  || "—"],
+              ["Period",      editingPayroll.billFrom ? `${editingPayroll.billFrom} → ${editingPayroll.billTo}` : "—"],
+              ["Days on Board", editingPayroll.daysOnBoard ? `${editingPayroll.daysOnBoard} / ${editingPayroll.daysOfMonth} days` : "—"],
+            ].map(([l,v]) => (
+              <div key={l}>
+                <div style={{ fontSize:9, color:C.txD, marginBottom:2 }}>{l}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:C.txt }}>{v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── EARNINGS (editable) ── */}
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:C.ok, letterSpacing:"0.8px", marginBottom:8 }}>EARNINGS — Crew Receives <span style={{fontWeight:400, color:C.txD}}>(editable)</span></div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+              {[
+                ["Basic Salary",          "salary",             C.txt],
+                ["Bonus",                 "bonus",              C.ok],
+                ["PDE Fees",              "pdeFees",            C.ok],
+                ["Visa Fees",             "visaFees",           C.ok],
+                ["Working Gear",          "workingGear",        C.ok],
+                ["Leave Pay (Refunded)",  "leavePayRefunded",   C.ok],
+              ].map(([l, key, color]) => (
+                <div key={key}>
+                  <label style={{ fontSize:9, color:C.txD, display:"block", marginBottom:3 }}>{l}</label>
+                  <input
+                    type="number"
+                    value={editForm[key] ?? 0}
+                    onChange={e => setEditForm(f => ({...f, [key]: e.target.value}))}
+                    style={{
+                      width:"100%", background:C.bg,
+                      border:`1px solid ${C.bdr}`, borderRadius:6,
+                      color, padding:"6px 8px", fontSize:12,
+                      fontWeight:600, outline:"none", boxSizing:"border-box",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── DEDUCTIONS (editable) ── */}
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:C.err, letterSpacing:"0.8px", marginBottom:8 }}>DEDUCTIONS <span style={{fontWeight:400, color:C.txD}}>(editable) &nbsp;&nbsp; Leave Pay = from Crew Registry</span></div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+              {[
+                ["DEP Fees / Month",  "office",         C.txt],
+                ["Paid DEP Fees",     "paidDepFees",    C.txM],
+                ["Balance DEP Fees",  "balanceDepFees", C.wrn],
+                ["DEP Fee Deducted",  "depFeeDed",      C.err],
+                ["Leave Pay",         "actLeavePay",    C.inf],
+              ].map(([l, key, color]) => (
+                <div key={key}>
+                  <label style={{ fontSize:9, color:C.txD, display:"block", marginBottom:3 }}>{l}</label>
+                  <input
+                    type="number"
+                    value={editForm[key] ?? 0}
+                    onChange={e => setEditForm(f => ({...f, [key]: e.target.value}))}
+                    style={{
+                      width:"100%", background:C.bg,
+                      border:`1px solid ${C.bdr}`, borderRadius:6,
+                      color, padding:"6px 8px", fontSize:12,
+                      fontWeight:600, outline:"none", boxSizing:"border-box",
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Auto net pay */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 14px", background:`${C.ok}0d`, borderRadius:7, border:`1px solid ${C.ok}30`, marginBottom:16 }}>
+            <span style={{ fontSize:11, color:C.txM }}>Auto-calculated Net Crew Pay (from Bill)</span>
+            <span style={{ fontSize:15, fontWeight:700, color:C.ok }}>${(Number(editingPayroll.netCrewPay)||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+          </div>
+
+          {/* Editable fields */}
+          <div style={{ fontSize:10, fontWeight:700, color:C.txM, letterSpacing:"0.8px", marginBottom:8 }}>ADJUST FOR ACTUAL PAYMENT</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+            {[
+              ["Actual Gross Amount (USD)",      "total",       C.acc],
+              ["Bank Transfer Charge (deduct)",  "bankCharge",  C.err],
+              ["Other Deductions",               "otherDed",    C.err],
+              ["Extra Bonus / Allowance (add)",  "extraBonus",  C.ok],
+            ].map(([label, key, color]) => (
+              <div key={key}>
+                <label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:4, fontWeight:600 }}>{label}</label>
+                <input
+                  type="number"
+                  value={editForm[key] ?? 0}
+                  onChange={e => setEditForm(f => ({...f, [key]: e.target.value}))}
+                  style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:6, color, padding:"7px 10px", fontSize:13, fontWeight:600, outline:"none", width:"100%", boxSizing:"border-box" }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Net preview */}
+          <div style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
+            <div style={{ fontSize:10, color:C.txD, marginBottom:6, fontWeight:600 }}>FINAL NET PAY PREVIEW</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.txM }}><span>Gross Amount</span><span>${Number(editForm.total||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
+              {Number(editForm.bonus||0)>0     && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.ok  }}><span>+ Extra Bonus</span><span>+${Number(editForm.bonus||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+              {Number(editForm.bankCharge||0)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Bank Charge</span><span>−${Number(editForm.bankCharge||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+              {Number(editForm.otherDed||0)>0   && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Other Deductions</span><span>−${Number(editForm.otherDed||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+              <div style={{ borderTop:`1px solid ${C.bdr}`, marginTop:4, paddingTop:6, display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:15 }}>
+                <span style={{color:C.txt}}>Net Total to Pay</span>
+                <span style={{color:C.ok}}>${Math.max(0, Number(editForm.total||0) + Number(editForm.bonus||0) - Number(editForm.bankCharge||0) - Number(editForm.otherDed||0)).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bank */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+            {[["Bank Name","bankName"],["Account No","bankAccNo"],["Account Name","bankAccName"]].map(([l,k]) => (
+              <div key={k} style={{ gridColumn: k==="bankAccName" ? "1/-1" : undefined }}>
+                <label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:3 }}>{l}</label>
+                <input value={editForm[k]||""} onChange={e => setEditForm(f=>({...f,[k]:e.target.value}))} style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:5, color:C.txt, padding:"6px 9px", fontSize:11.5, outline:"none", width:"100%", boxSizing:"border-box" }} />
+              </div>
+            ))}
+          </div>
+          <div style={{ marginBottom:16 }}>
+            <label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:3 }}>Remark / Notes</label>
+            <input value={editForm.remark||""} onChange={e => setEditForm(f=>({...f,remark:e.target.value}))} placeholder="e.g. Bank charge deducted, extra allowance added..." style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:5, color:C.txt, padding:"6px 9px", fontSize:11.5, outline:"none", width:"100%", boxSizing:"border-box" }} />
+          </div>
+
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+            <Btn v="sec" onClick={() => setEditingPayroll(null)}>Cancel</Btn>
+            <Btn v="ok" onClick={saveAndSubmit}>✓ Submit for Admin Approval</Btn>
+          </div>
+        </Mod>
+      )}
+
+      {/* ── MANUAL PAYMENT MODAL ── */}
       {isManualModalOpen && (
         <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:"rgba(0,0,0,0.55)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, backdropFilter:"blur(2px)" }}>
           <div style={{ background:C.card, padding:25, borderRadius:12, width:400, border:`1px solid ${C.bdr}`, boxShadow:"0 24px 60px rgba(0,0,0,0.4)", animation:"mu-modal-in 0.18s ease" }}>
@@ -1232,54 +1801,231 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
 
       {payrolls.length > 0 && (
         <div style={{ background:C.card, borderRadius:8, border:`1px solid ${C.bdr}`, padding:14, marginTop:14 }}>
-          <h4 style={{ margin:"0 0 10px", fontSize:12.5, fontWeight:600 }}>🖨️ Payroll Reporting</h4>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:10 }}>
-            {payrolls.map(pr => (
-              <div key={pr.bill.id} style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:6, padding:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div><div style={{ fontSize:11, fontWeight:600 }}>{pr.clientName} · {pr.bill.month}</div><div style={{ fontSize:9, color:C.txD }}>{pr.payments.length} crew · Bill: {pr.bill.id}</div></div>
-                <Btn v="ghost" s={{fontSize:10}} onClick={async()=>{ setCalc(pr); if(fsOk){ const saved=await fs.getD("payrollSettings",pr.bill.id); if(saved){setRate(saved.rate||3985);setExtra(saved.extraSettings||{});}else{setRate(3985);setExtra({});} } }}>Report</Btn>
-              </div>
-            ))}
+          <h4 style={{ margin:"0 0 12px", fontSize:12.5, fontWeight:600 }}>🖨️ Payroll Reporting</h4>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {payrolls.map(pr => {
+              const submitted = pr.payments.length;
+              const total     = pr.totalInBill || submitted;
+              const pct       = total > 0 ? Math.round((submitted / total) * 100) : 100;
+              const complete  = total > 0 && submitted >= total;
+              return (
+                <div key={pr.bill.id} style={{
+                  background: complete ? `${C.ok}08` : C.bg,
+                  border: `1px solid ${complete ? C.ok+"35" : C.bdr}`,
+                  borderRadius: 8, overflow:"hidden",
+                }}>
+                  {/* Bill header */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", borderBottom:`1px solid ${C.bdr}40` }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:700, color:C.txt }}>{pr.clientName}</div>
+                        <div style={{ fontSize:9, color:C.txD }}>{pr.bill.month} · {pr.bill.id} · {pr.bill.vessel||""}</div>
+                      </div>
+                      {complete
+                        ? <span style={{ fontSize:10, fontWeight:700, color:C.ok, background:`${C.ok}15`, padding:"2px 8px", borderRadius:10, border:`1px solid ${C.ok}30` }}>✓ Complete</span>
+                        : <span style={{ fontSize:10, color:C.wrn, fontWeight:600 }}>{submitted}/{total} submitted</span>
+                      }
+                    </div>
+                    <Btn v="ghost" s={{fontSize:10}} onClick={async()=>{ setCalc(pr); if(fsOk){ const saved=await fs.getD("payrollSettings",pr.bill.id); if(saved){setRate(saved.rate||3985);setExtra(saved.extraSettings||{});}else{setRate(3985);setExtra({});} } }}>View Report</Btn>
+                  </div>
+                  {/* Crew dot indicators */}
+                  {(() => {
+                    const submittedIds = new Set(pr.payments.map(p => String(p.crewId)));
+                    const allBillCrew = pr.bill.crew || [];
+                    return (
+                      <div style={{ padding:"8px 14px", display:"flex", alignItems:"center", gap:4, flexWrap:"wrap" }}>
+                        {allBillCrew.map(c => {
+                          const cId = String(c.id || c.crewId);
+                          const pay = pr.payments.find(p => String(p.crewId) === cId);
+                          const done = !!pay;
+                          const col = pay?.status==="Paid"?C.ok : pay?.status==="Approved"||pay?.status==="Processed"?C.inf : done?C.acc:null;
+                          return (
+                            <div key={cId} title={`${c.name}${done?" — "+pay.status:" — Pending"}`} style={{
+                              width:22, height:22, borderRadius:"50%",
+                              background: done ? col : "transparent",
+                              border: done ? `2px solid ${col}` : `2px dashed ${C.bdr}`,
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              fontSize:8, fontWeight:700,
+                              color: done ? "#fff" : C.txD,
+                              flexShrink:0,
+                              transition:"all 0.2s",
+                              boxShadow: done ? `0 0 6px ${col}50` : "none",
+                            }}>
+                              {(c.name||"?")[0].toUpperCase()}
+                            </div>
+                          );
+                        })}
+                        <span style={{ fontSize:9, color:C.txD, marginLeft:4 }}>
+                          {pr.payments.length}/{allBillCrew.length || pr.payments.length}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  {/* Per-crew rows: submitted + pending */}
+                  <div style={{ padding:"10px 14px", display:"flex", flexDirection:"column", gap:4 }}>
+                    {/* Submitted crew chips */}
+                    {pr.payments.length > 0 && (
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom: (pr.totalInBill > pr.payments.length) ? 6 : 0 }}>
+                        {pr.payments.map(p => {
+                          const statusCol = p.status==="Paid"?C.ok : p.status==="Approved"||p.status==="Processed"?C.inf : C.acc;
+                          const statusLabel = p.status==="Paid"?"Paid" : p.status==="Approved"?"Approved" : p.status==="Processed"?"Processed" : "Submitted";
+                          return (
+                            <div key={p.id} style={{
+                              display:"flex", alignItems:"center", gap:5,
+                              background:`${statusCol}12`, border:`1px solid ${statusCol}35`,
+                              borderRadius:6, padding:"4px 9px", fontSize:10,
+                            }}>
+                              <span style={{ width:5, height:5, borderRadius:"50%", background:statusCol, display:"inline-block", flexShrink:0 }} />
+                              <span style={{ fontWeight:600, color:C.txt }}>{p.crewName}</span>
+                              <span style={{ color:C.txD, fontSize:9 }}>{p.rank}</span>
+                              <span style={{ color:statusCol, fontWeight:700 }}>${(p.total||0).toLocaleString()}</span>
+                              <span style={{ color:statusCol, fontSize:9, opacity:0.8 }}>{statusLabel}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Pending (not yet submitted) crew */}
+                    {(() => {
+                      const submittedIds = new Set(pr.payments.map(p => String(p.crewId)));
+                      const pendingCrew = (pr.bill.crew || []).filter(c => !submittedIds.has(String(c.id || c.crewId)));
+                      if (!pendingCrew.length) return null;
+                      return (
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                          {pendingCrew.map(c => (
+                            <div key={c.id||c.name} style={{
+                              display:"flex", alignItems:"center", gap:5,
+                              background:`${C.txD}0a`, border:`1px dashed ${C.bdr}`,
+                              borderRadius:6, padding:"4px 9px", fontSize:10, opacity:0.65,
+                            }}>
+                              <span style={{ width:5, height:5, borderRadius:"50%", border:`1.5px solid ${C.txD}`, display:"inline-block", flexShrink:0 }} />
+                              <span style={{ color:C.txM }}>{c.name}</span>
+                              <span style={{ color:C.txD, fontSize:9 }}>{c.rank}</span>
+                              <span style={{ color:C.txD, fontSize:9 }}>Pending</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {calc && <Mod title={`Payroll Summary: ${calc.clientName} (${calc.bill.month})`} onClose={()=>setCalc(null)} w={950}>
-        <div style={{ marginBottom:15, display:"flex", gap:20, alignItems:"center", background:C.bg, padding:10, borderRadius:6, border:`1px solid ${C.bdr}` }}>
-          <div><label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:3 }}>Exchange Rate (MMK/USD)</label><input type="number" value={rate} onChange={e=>setRate(e.target.value)} style={{...inp,width:120}}/></div>
-          <div style={{ fontSize:11, color:C.txD }}>Calculates MMK totals and groups Bank/Cash lists.</div>
+      {calc && <Mod title={`Payroll Report — ${calc.clientName} (${calc.bill.month})`} onClose={()=>setCalc(null)} w={1100}>
+        {/* Header bar with exchange rate */}
+        <div style={{ display:"flex", gap:16, alignItems:"center", background:C.bg, padding:"10px 14px", borderRadius:6, border:`1px solid ${C.bdr}`, marginBottom:16 }}>
+          <div><label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:3 }}>Exchange Rate (MMK/USD)</label><input type="number" value={rate} onChange={e=>setRate(e.target.value)} style={{...inp,width:110}}/></div>
+          <div style={{ fontSize:10, color:C.txD }}>Bill: <b style={{color:C.acc}}>{calc.bill.id}</b> &nbsp;|&nbsp; Vessel: <b>{calc.bill.vessel||"—"}</b> &nbsp;|&nbsp; {calc.payments.length} crew</div>
+          <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
+            <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportPayrollPDF(calc,rate,extra,crew)}>📄 PDF Summary</Btn>
+            <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportBankPDF(calc,rate,extra,crew)}>📄 Bank PDF</Btn>
+            <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportCashPDF(calc,rate,extra,crew)}>📄 Cash PDF</Btn>
+            <Btn s={{fontSize:10}} onClick={async()=>{ const d={billId:calc.bill.id,vessel:calc.vessel,month:calc.bill.month,rate,extraSettings:extra,finalizedAt:new Date().toISOString()}; if(fsOk) await fs.setD("payrollSettings",calc.bill.id,d); showT("Settings saved ✓"); }}>💾 Save</Btn>
+          </div>
         </div>
-        <div style={{ overflowX:"auto", maxHeight:400, border:`1px solid ${C.bdr}`, borderRadius:6 }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:10.5 }}>
-            <thead style={{ position:"sticky", top:0, background:C.bg, zIndex:1 }}>
-              <tr>{["Name","Vessel","Rank","Remittance(USD)","Bank Chg(MMK)","Refunds(MMK)","Ded.(MMK)","Remittance(MMK)","Type"].map(h=><th key={h} style={thS}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {calc.payments.map(p => {
-                const c=crew.find(cr=>cr.id===p.crewId)||{};
-                const ex=extra[p.crewId]||{bc:200,ref:0,ded:0};
-                const mmk=(p.total*rate)-ex.bc+ex.ref-ex.ded;
-                const updateExtra=(k,v)=>setExtra({...extra,[p.crewId]:{...ex,[k]:Number(v)}});
-                return <tr key={p.id} {...trHover}>
-                  <td style={tdS}><b>{c.name}</b></td>
-                  <td style={tdS}>{c.vessel||"Unknown"}</td>
-                  <td style={tdS}>{c.rank}</td>
-                  <td style={{...tdS,fontWeight:600}}>${(p.total||0).toLocaleString()}</td>
-                  <td style={tdS}><input type="number" value={ex.bc} onChange={e=>updateExtra("bc",e.target.value)} style={{...inp,padding:"2px 5px",fontSize:10}}/></td>
-                  <td style={tdS}><input type="number" value={ex.ref} onChange={e=>updateExtra("ref",e.target.value)} style={{...inp,padding:"2px 5px",fontSize:10}}/></td>
-                  <td style={tdS}><input type="number" value={ex.ded} onChange={e=>updateExtra("ded",e.target.value)} style={{...inp,padding:"2px 5px",fontSize:10}}/></td>
-                  <td style={{...tdS,fontWeight:700,color:C.pri}}>{mmk.toLocaleString()}</td>
-                  <td style={tdS}><Badge t={c.allotmentType||"bank"} c={c.allotmentType==="cash"?"orange":"blue"}/></td>
-                </tr>;
-              })}
-            </tbody>
-          </table>
+
+        {/* Per-crew cards */}
+        <div style={{ maxHeight:"65vh", overflowY:"auto", display:"flex", flexDirection:"column", gap:12 }}>
+          {calc.payments.map(p => {
+            const c = crew.find(cr=>cr.id===p.crewId)||{};
+            const ex = extra[p.crewId]||{bc:200,ref:0,ded:0};
+            const mmk = (p.total * Number(rate)) - ex.bc + ex.ref - ex.ded;
+            const fmt = v => `${(Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2})}`;
+            const statusColor = p.status==="Paid"?C.ok:p.status==="Approved"||p.status==="Processed"?C.inf:C.wrn;
+            return (
+              <div key={p.id} style={{ background:C.bg, borderRadius:8, border:`1px solid ${C.bdr}`, padding:"12px 14px" }}>
+                {/* Crew header row */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <b style={{ fontSize:13, color:C.txt }}>{p.crewName || c.name}</b>
+                    <span style={{ fontSize:10, color:C.txD }}>{p.rank || c.rank}</span>
+                    <Badge t={p.status} c={p.status==="Paid"?"green":p.status==="Approved"||p.status==="Processed"?"blue":"yellow"} />
+                  </div>
+                  <div style={{ fontSize:11, color:C.txD }}>
+                    {p.bankName || c.bankName || "—"} &nbsp;|&nbsp; {p.bankAccNo || c.bankAccNo || "—"}
+                  </div>
+                </div>
+
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12 }}>
+                  {/* EARNINGS */}
+                  <div style={{ background:C.card, borderRadius:6, padding:"8px 10px" }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:C.ok, letterSpacing:"0.8px", marginBottom:6 }}>EARNINGS</div>
+                    {[
+                      ["Basic Salary",    p.salary,       C.txt],
+                      ["Bonus",           p.bonus,        C.ok],
+                      ["PDE Fees",        p.pdeFees,      C.ok],
+                      ["Visa Fees",       p.visaFees,     C.ok],
+                      ["Working Gear",    p.workingGear,  C.ok],
+                      ["Leave Pay (Ref)", p.leavePayRefunded, C.ok],
+                    ].map(([l,v,col]) => Number(v)>0 ? (
+                      <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:2 }}>
+                        <span style={{color:C.txD}}>{l}</span>
+                        <span style={{color:col, fontWeight:500}}>{fmt(v)}</span>
+                      </div>
+                    ) : null)}
+                  </div>
+
+                  {/* DEDUCTIONS */}
+                  <div style={{ background:C.card, borderRadius:6, padding:"8px 10px" }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:C.err, letterSpacing:"0.8px", marginBottom:6 }}>DEDUCTIONS</div>
+                    {[
+                      ["DEP Fees/Mo",     p.office,           C.txt],
+                      ["Paid DEP",        p.paidDepFees,      C.txM],
+                      ["Bal DEP",         p.balanceDepFees,   p.balanceDepFees>0?C.wrn:C.txM],
+                      ["DEP Deducted",    p.depFeeDed,        p.depFeeDed>0?C.err:C.txM],
+                      ["Leave Pay",       p.actLeavePay,      p.actLeavePay>0?C.inf:C.txM],
+                    ].map(([l,v,col]) => (
+                      <div key={l} style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:2 }}>
+                        <span style={{color:C.txD}}>{l}</span>
+                        <span style={{color:col, fontWeight:500}}>{fmt(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* NET PAY & MMK */}
+                  <div style={{ background:C.card, borderRadius:6, padding:"8px 10px" }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:C.acc, letterSpacing:"0.8px", marginBottom:6 }}>NET PAY</div>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:3 }}><span style={{color:C.txD}}>Gross Amount</span><span style={{color:C.txt}}>{fmt(p.grossTotal||p.total)}</span></div>
+                    {Number(p.bankCharge)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:3 }}><span style={{color:C.txD}}>− Bank Charge</span><span style={{color:C.err}}>{fmt(p.bankCharge)}</span></div>}
+                    {Number(p.otherDed)>0   && <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:3 }}><span style={{color:C.txD}}>− Other Ded.</span><span style={{color:C.err}}>{fmt(p.otherDed)}</span></div>}
+                    {Number(p.extraBonus)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, marginBottom:3 }}><span style={{color:C.txD}}>+ Extra Bonus</span><span style={{color:C.ok}}>{fmt(p.extraBonus)}</span></div>}
+                    <div style={{ borderTop:`1px solid ${C.bdr}`, marginTop:4, paddingTop:5, display:"flex", justifyContent:"space-between", fontWeight:700, marginBottom:6 }}>
+                      <span style={{color:C.txt, fontSize:11}}>Net USD</span>
+                      <span style={{color:C.ok, fontSize:13}}>{fmt(p.total)}</span>
+                    </div>
+                    {/* MMK row with editable adjustments */}
+                    <div style={{ fontSize:9, fontWeight:700, color:C.pri, letterSpacing:"0.8px", marginBottom:5 }}>MMK CONVERSION</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:4 }}>
+                      {[["B.Chg","bc"],["Ref.","ref"],["Ded.","ded"]].map(([l,k]) => (
+                        <div key={k}>
+                          <div style={{fontSize:8,color:C.txD,marginBottom:2}}>{l}</div>
+                          <input type="number" value={ex[k]} onChange={e=>setExtra({...extra,[p.crewId]:{...ex,[k]:Number(e.target.value)}})} style={{...inp,padding:"2px 4px",fontSize:9,width:"100%"}}/>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700, marginTop:6, padding:"4px 0", borderTop:`1px solid ${C.bdr}` }}>
+                      <span style={{color:C.pri, fontSize:10}}>Total MMK</span>
+                      <span style={{color:C.pri, fontSize:12}}>{mmk.toLocaleString()}</span>
+                    </div>
+                    {p.remark && <div style={{fontSize:9,color:C.txD,marginTop:4,fontStyle:"italic"}}>{p.remark}</div>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <div style={{ display:"flex", justifyContent:"flex-end", gap:10, marginTop:15 }}>
-          <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportPayrollPDF(calc,rate,extra,crew)}>📄 PDF Summary</Btn>
-          <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportBankPDF(calc,rate,extra,crew)}>📄 Bank PDF</Btn>
-          <Btn v="ghost" s={{fontSize:10}} onClick={()=>exportCashPDF(calc,rate,extra,crew)}>📄 Cash PDF</Btn>
-          <Btn onClick={async()=>{ const d={billId:calc.bill.id,vessel:calc.vessel,month:calc.bill.month,rate,extraSettings:extra,finalizedAt:new Date().toISOString()}; if(fsOk) await fs.setD("payrollSettings",calc.bill.id,d); showT("Settings saved ✓"); }}>💾 Save Settings</Btn>
+
+        {/* Grand total footer */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:12, padding:"10px 14px", background:`${C.pri}10`, borderRadius:7, border:`1px solid ${C.pri}30` }}>
+          <span style={{ fontSize:12, fontWeight:600, color:C.txt }}>GRAND TOTAL ({calc.payments.length} crew)</span>
+          <div style={{ display:"flex", gap:24 }}>
+            <span style={{ fontSize:12 }}>USD: <b style={{color:C.ok}}>${calc.payments.reduce((s,p)=>s+(p.total||0),0).toLocaleString(undefined,{minimumFractionDigits:2})}</b></span>
+            <span style={{ fontSize:12 }}>MMK: <b style={{color:C.pri}}>{calc.payments.reduce((s,p)=>{ const ex2=extra[p.crewId]||{bc:200,ref:0,ded:0}; return s+(p.total*Number(rate))-ex2.bc+ex2.ref-ex2.ded; },0).toLocaleString()}</b></span>
+          </div>
         </div>
       </Mod>}
     </div>

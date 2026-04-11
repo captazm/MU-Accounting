@@ -441,7 +441,46 @@ function App() {
     setTimeout(() => w.print(), 500);
   };
 
-  const p = { crew, setCrew, bills, setBills, payments, setPayments, slips, setSlips, crewPay, setCrewPay, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, setTab, showT, vessels, clients, fs, fsOk, selectedMonth, setSelectedMonth, userRole, bulkUpload, migrating, genPayrollFromBill, createManualPayment, approve, markProcessed, markPaid, printPayslip };
+  const deleteBill = async (billId) => {
+    if (userRole !== "admin") { showT("Admin permission လိုအပ်သည်", "err"); return; }
+    
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+
+    if (!window.confirm(`Are you sure you want to delete bill ${billId}?\nThis will also delete associated payments and payroll records.`)) return;
+
+    setLoading(true);
+    try {
+      // 1. Delete associated payments (reconciliations)
+      const relatedPayments = payments.filter(pay => pay.billId === billId);
+      for (const pay of relatedPayments) {
+        await fs.delD("payments", pay.id);
+      }
+
+      // 2. Delete associated payrolls (crewPayments)
+      const relatedPayrolls = crewPay.filter(cp => cp.slipId === billId);
+      for (const cp of relatedPayrolls) {
+        await fs.delD("crewPayments", cp.id);
+      }
+
+      // 3. Delete the bill itself
+      await fs.delD("bills", billId);
+
+      // 4. Update local state synchronously (to reflect changes immediately)
+      setBills(prev => prev.filter(b => b.id !== billId));
+      setPayments(prev => prev.filter(pay => pay.billId !== billId));
+      setCrewPay(prev => prev.filter(cp => cp.slipId !== billId));
+
+      showT(`Bill ${billId} and associated records deleted successfully.`);
+    } catch (err) {
+      console.error("Delete bill error:", err);
+      showT("Failed to delete bill", "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const p = { crew, setCrew, bills, setBills, payments, setPayments, slips, setSlips, crewPay, setCrewPay, filtered, fN, setFN, fV, setFV, fC, setFC, modal, setModal, setTab, showT, vessels, clients, fs, fsOk, selectedMonth, setSelectedMonth, userRole, bulkUpload, migrating, genPayrollFromBill, createManualPayment, approve, markProcessed, markPaid, printPayslip, deleteBill };
 
   // ── Improved Spinner ────────────────────────────────────────────────────
   const Spinner = ({ msg }) => (
@@ -775,10 +814,8 @@ function App() {
 
         {/* Footer */}
         <footer style={{ textAlign: "center", padding: "8px 16px", borderTop: `1px solid ${C.bdr}`, background: C.sf, fontSize: 10.5, color: C.txD, flexShrink: 0 }}>
-          Developed with{" "}
-          <span style={{ color: "#f97316", fontWeight: 700 }}>Antigravity</span>
-          {" "}&amp;{" "}
-          <span style={{ color: "#7c3aed", fontWeight: 700 }}>Claude</span>
+          Developed by{" "}
+          <span style={{ color: "#f97316", fontWeight: 700 }}>AZM</span>
         </footer>
       </div>
     </div>
@@ -996,7 +1033,7 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
 }
 
 // ============== BILLING ==============
-function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
+function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, userRole }) {
   const [sc, setSc] = useState(""); const [mo, setMo] = useState("2026-04"); const [vb, setVb] = useState(null);
   const [confDel, setConfDel] = useState(null);
   const inp = { background: C.bg, border: `1px solid ${C.bdr}`, borderRadius: 5, color: C.txt, padding: "6px 9px", fontSize: 11.5, outline: "none" };
@@ -1110,6 +1147,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk }) {
             <Btn v="ghost" onClick={() => exportCSV(b)} s={{ fontSize: 11 }}>📊 Download Excel</Btn>
             <Btn v="ghost" onClick={() => exportPDF(b)} s={{ fontSize: 11 }}>📄 PDF Version</Btn>
             <Btn v="sec" onClick={() => setVb(vb === b.id ? null : b.id)}>{vb === b.id ? "Hide" : "Details"}</Btn>
+            {userRole === "admin" && <Btn v="err" onClick={() => deleteBill(b.id)} s={{ fontSize: 11 }}>🗑️ Delete</Btn>}
           </div>
         </div>
         <div style={{ background: C.bg, borderRadius: 6, padding: "8px 12px", border: `1px solid ${C.bdr}` }}>

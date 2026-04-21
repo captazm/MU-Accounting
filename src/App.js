@@ -275,13 +275,17 @@ function App() {
     setCrewPay(prev => prev.map(x => x.id === id ? { ...x, ...up } : x));
     if (fsOk) {
       await fs.upD("crewPayments", id, up);
-      if (p.crewId && (p.depFeeDed || p.actLeavePay)) {
+      if (p.crewId && (p.depFeeDed || p.actLeavePay || p.leavePayRefunded)) {
         const c = crew.find(cr => String(cr.id) === String(p.crewId));
         if (c) {
           const upd = {
             paidDepFees: (c.paidDepFees || 0) + (p.depFeeDed || 0),
             balanceDepFees: Math.max(0, (c.balanceDepFees || 0) - (p.depFeeDed || 0)),
-            accumulatedLeavePay: (c.accumulatedLeavePay || 0) + (p.actLeavePay || 0)
+            accumulatedLeavePay: Math.max(0,
+              (c.accumulatedLeavePay || 0)
+              + (p.actLeavePay || 0)
+              - (p.leavePayRefunded || 0)
+            )
           };
           await fs.upD("crew", c.id, upd);
         }
@@ -352,7 +356,6 @@ function App() {
           <div class="info-item"><div class="ilbl">Crew ID</div><div class="ival">${p.crewId||'—'}</div></div>
           <div class="info-item"><div class="ilbl">Rank / Position</div><div class="ival">${p.rank||'—'}</div></div>
           <div class="info-item"><div class="ilbl">Vessel</div><div class="ival">${p.vessel||'—'}</div></div>
-          <div class="info-item"><div class="ilbl">Client / Ship Owner</div><div class="ival">${p.client||'—'}</div></div>
           <div class="info-item"><div class="ilbl">Sign-On Date</div><div class="ival">${p.joinDate||'—'}</div></div>
           <div class="info-item"><div class="ilbl">Service Period</div><div class="ival">${p.billFrom?`${p.billFrom} → ${p.billTo}`:'—'}</div></div>
           <div class="info-item"><div class="ilbl">Days on Board</div><div class="ival">${p.daysOnBoard?`${p.daysOnBoard} of ${p.daysOfMonth} days`:'—'}</div></div>
@@ -371,6 +374,7 @@ function App() {
         </table>
       </div>
 
+      ${(Number(p.balanceDepFees)>0 || Number(p.depFeeDed)>0) ? `
       <div class="section">
         <div class="section-title">Departure (DEP) Fees</div>
         <table>
@@ -379,7 +383,7 @@ function App() {
           ${Number(p.depFeeDed)>0 ? row('Deducted This Month',       fmtUSD(p.depFeeDed), 'neg') : row('Deducted This Month', '—', 'muted')}
           ${Number(p.balanceDepFees)>0 ? row('Remaining Balance', fmtUSD(p.balanceDepFees), 'neg') : row('Remaining Balance', 'Fully Settled', 'pos')}
         </table>
-      </div>
+      </div>` : ''}
 
       <div class="section">
         <div class="section-title">Leave Pay</div>
@@ -911,15 +915,17 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
     if (!form.name) return;
     // Pick primary bank from banks array (first entry) or use top-level fields
     const primaryBank = (form.banks && form.banks.length > 0) ? form.banks[0] : {};
+    const officeAmt = Number(form.office) || 0;
+    const paidAmt   = Number(form.paidDepFees) || 0;
     const f = {
       ...form,
       ownerPaid:    Number(form.ownerPaid)    || 0,
       salary:       Number(form.salary)       || 0,
-      office:       Number(form.office)       || 0,
+      office:       officeAmt,
       manningFees:  Number(form.manningFees)  || 0,
       leavePay:     Number(form.leavePay)     || 0,
-      paidDepFees:  Number(form.paidDepFees)  || 0,
-      balanceDepFees: Number(form.balanceDepFees) || 0,
+      paidDepFees:  paidAmt,
+      balanceDepFees: Math.max(0, officeAmt - paidAmt),  // Auto: Total − Paid
       accumulatedLeavePay: Number(form.accumulatedLeavePay) || 0,
       // Always sync top-level bank fields from the banks array primary entry
       bankName:    form.bankName    || primaryBank.bankName    || "",
@@ -986,21 +992,30 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
     </div>
     {(modal === "add" || modal === "edit") && <Mod title={modal === "add" ? "Add Crew" : "Edit Crew"} onClose={() => setModal(null)}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["DEP FEES","office"],["Paid Dep Fees","paidDepFees"],["Bal Dep Fees","balanceDepFees"],["Manning Fees","manningFees"],["Leave Pay / Month","leavePay"],["Leave Pay (Acc.) — auto","accumulatedLeavePay",false,true],["Remark","remark"]].map(([l, k, d, readOnly]) => (
+        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["DEP FEES (Total)","office"],["Paid Dep Fees","paidDepFees"],["Bal Dep Fees — auto","balanceDepFees"],["Manning Fees","manningFees"],["Leave Pay / Month","leavePay"],["Leave Pay (Acc.) — auto","accumulatedLeavePay",false,true],["Remark","remark"]].map(([l, k, d, readOnly]) => {
+          const isAutoBal = k === "balanceDepFees";
+          const autoBalance = Math.max(0, (Number(form.office)||0) - (Number(form.paidDepFees)||0));
+          const displayValue = isAutoBal ? autoBalance : (form[k] ?? "");
+          const effectiveReadOnly = readOnly || isAutoBal;
+          const tooltip = isAutoBal
+            ? "Auto-calculated: DEP FEES (Total) − Paid Dep Fees"
+            : (readOnly ? "Auto-accumulated from payroll deductions. Do not edit manually." : undefined);
+          return (
           <div key={k}>
             <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>{l}</label>
             <input
-              value={form[k] ?? ""}
+              value={displayValue}
               disabled={d}
-              readOnly={readOnly}
-              title={readOnly ? "Auto-accumulated from payroll deductions. Do not edit manually." : undefined}
+              readOnly={effectiveReadOnly}
+              title={tooltip}
               type={["ownerPaid","salary","office","paidDepFees","balanceDepFees","manningFees","leavePay","accumulatedLeavePay"].includes(k) ? "number" : "text"}
-              onChange={e => !readOnly && setForm({ ...form, [k]: e.target.value })}
-              style={{ ...inp, opacity: (d || readOnly) ? 0.5 : 1, cursor: readOnly ? "not-allowed" : "text",
-                color: readOnly ? C.inf : C.txt, fontWeight: readOnly ? 600 : 400 }}
+              onChange={e => !effectiveReadOnly && setForm({ ...form, [k]: e.target.value })}
+              style={{ ...inp, opacity: (d || effectiveReadOnly) ? 0.5 : 1, cursor: effectiveReadOnly ? "not-allowed" : "text",
+                color: effectiveReadOnly ? C.inf : C.txt, fontWeight: effectiveReadOnly ? 600 : 400 }}
             />
           </div>
-        ))}
+          );
+        })}
         <div>
           <label style={{ fontSize: 10, color: C.txM, display: "block", marginBottom: 3 }}>Payment Type</label>
           <select value={form.allotmentType || "bank"} onChange={e => setForm({ ...form, allotmentType: e.target.value })} style={inp}>
@@ -1052,11 +1067,9 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
     const bc = cl.map(c => {
       let dob = dim;
       if (c.joinDate) { const jd = new Date(c.joinDate); const ms2 = new Date(y,m-1,1); const me = new Date(y,m-1,dim); if (jd >= ms2 && jd <= me) dob = dim - jd.getDate() + 1; else if (jd > me) dob = 0; }
-      const isOfc = /master|chief|officer|engineer|cadet/i.test(c.rank || "");
-      const lpPerc = isOfc ? 0.05 : 0.10;
       const ha = dob === dim ? (c.ownerPaid||0) : Math.round(((c.ownerPaid||0)/dim)*dob*100)/100;
       const actManning = dob === dim ? (c.manningFees||0) : Math.round(((c.manningFees||0)/dim)*dob*100)/100;
-      const maxLp = (c.salary||0)*lpPerc;
+      const maxLp = Number(c.leavePay) || 0;  // Leave pay from registry (monthly rate)
       const actLeavePay = dob === dim ? maxLp : Math.round((maxLp/dim)*dob*100)/100;
       const depFeeDed = c.balanceDepFees > 0 ? c.balanceDepFees : 0;
       const netCrewPay = Math.max(0, ha - actManning - actLeavePay - depFeeDed);
@@ -1101,9 +1114,8 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
           if (field === "daysOnBoard") {
             u.actualHA = u.daysOnBoard===u.daysOfMonth?(u.ownerPaid||0):Math.round(((u.ownerPaid||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
             u.actManning = u.daysOnBoard===u.daysOfMonth?(u.manningFees||0):Math.round(((u.manningFees||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
-            const isOfc=/master|chief|officer|engineer|cadet/i.test(u.rank||"");
-            const maxLp=(u.salary||0)*(isOfc?0.05:0.10);
-            u.actLeavePay=u.daysOnBoard===u.daysOfMonth?maxLp:Math.round((maxLp/u.daysOfMonth)*u.daysOnBoard*100)/100;
+            const maxLp = Number(u.leavePay) || 0;  // Leave pay from registry
+            u.actLeavePay = u.daysOnBoard===u.daysOfMonth ? maxLp : Math.round((maxLp/u.daysOfMonth)*u.daysOnBoard*100)/100;
           }
           u.totalPayment=Math.max(0,(u.actualHA||0)+(u.bonus||0)+(u.pdeFees||0)+(u.visaFees||0)+(u.workingGear||0)-(u.pob||0));
           u.netCrewPay=Math.max(0,u.totalPayment-(u.actManning||0)-(u.actLeavePay||0)-(u.depFeeDed||0));
@@ -1367,7 +1379,7 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
       pdeFees:     p.pdeFees     || 0,
       visaFees:    p.visaFees    || 0,
       workingGear: p.workingGear || 0,
-      actLeavePay: p.leavePay  || p.actLeavePay || 0,   // from registry
+      actLeavePay: p.actLeavePay || p.leavePay || 0,   // bill pro-rated first, fallback to registry
       accumulatedLeavePay: p.accumulatedLeavePay || 0,
       leavePayRefunded: p.leavePayRefunded || 0,
       // Editable deductions
@@ -1390,10 +1402,13 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
 
   const saveAndSubmit = async () => {
     if (!editingPayroll) return;
-    const netTotal = Math.max(0,
-      Number(editForm.total) + Number(editForm.extraBonus||0)
-      - Number(editForm.bankCharge) - Number(editForm.otherDed)
-    );
+    // Compute auto net from earnings − deductions (mirrors UI)
+    const earnSum = Number(editForm.salary||0) + Number(editForm.bonus||0) + Number(editForm.pdeFees||0)
+                  + Number(editForm.visaFees||0) + Number(editForm.workingGear||0) + Number(editForm.leavePayRefunded||0);
+    const dedSum  = Number(editForm.depFeeDed||0) + Number(editForm.actLeavePay||0);
+    const autoNet = earnSum - dedSum;
+    const netTotal = Math.max(0, autoNet + Number(editForm.extraBonus||0)
+      - Number(editForm.bankCharge||0) - Number(editForm.otherDed||0));
     const up = {
       // Earnings
       salary:       Number(editForm.salary),
@@ -1412,7 +1427,8 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
       depFeeDed:     Number(editForm.depFeeDed),
       // Adjustments & final
       total:        netTotal,
-      grossTotal:   Number(editForm.total),
+      grossTotal:   autoNet,
+      netCrewPay:   autoNet,
       bankCharge:   Number(editForm.bankCharge),
       otherDed:     Number(editForm.otherDed),
       extraBonus:   Number(editForm.extraBonus||0),
@@ -1730,47 +1746,74 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
             </div>
           </div>
 
-          {/* Auto net pay */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 14px", background:`${C.ok}0d`, borderRadius:7, border:`1px solid ${C.ok}30`, marginBottom:16 }}>
-            <span style={{ fontSize:11, color:C.txM }}>Auto-calculated Net Crew Pay (from Bill)</span>
-            <span style={{ fontSize:15, fontWeight:700, color:C.ok }}>${(Number(editingPayroll.netCrewPay)||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
-          </div>
+          {/* Auto net pay — computed dynamically from Earnings − Deductions */}
+          {(() => {
+            const earn = Number(editForm.salary||0) + Number(editForm.bonus||0) + Number(editForm.pdeFees||0)
+                       + Number(editForm.visaFees||0) + Number(editForm.workingGear||0) + Number(editForm.leavePayRefunded||0);
+            const ded  = Number(editForm.depFeeDed||0) + Number(editForm.actLeavePay||0);
+            const autoNet = earn - ded;
+            const finalNet = Math.max(0, autoNet + Number(editForm.extraBonus||0)
+              - Number(editForm.bankCharge||0) - Number(editForm.otherDed||0));
+            return (
+              <>
+                {/* Earnings/Deductions summary + auto net */}
+                <div style={{ padding:"10px 14px", background:`${C.ok}0d`, borderRadius:7, border:`1px solid ${C.ok}30`, marginBottom:14 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:C.txD, marginBottom:4 }}>
+                    <span>Total Earnings (sum of green fields)</span>
+                    <span style={{color:C.ok, fontWeight:600}}>+ ${earn.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:C.txD, marginBottom:6 }}>
+                    <span>Total Deductions (DEP Fee + Leave Pay)</span>
+                    <span style={{color:C.err, fontWeight:600}}>− ${ded.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                  </div>
+                  <div style={{ borderTop:`1px solid ${C.ok}30`, paddingTop:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <span style={{ fontSize:11, color:C.txM, fontWeight:600 }}>Auto-calculated Net Crew Pay (from Bill)</span>
+                    <span style={{ fontSize:15, fontWeight:700, color:C.ok }}>${autoNet.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                  </div>
+                </div>
 
-          {/* Editable fields */}
-          <div style={{ fontSize:10, fontWeight:700, color:C.txM, letterSpacing:"0.8px", marginBottom:8 }}>ADJUST FOR ACTUAL PAYMENT</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-            {[
-              ["Actual Gross Amount (USD)",      "total",       C.acc],
-              ["Bank Transfer Charge (deduct)",  "bankCharge",  C.err],
-              ["Other Deductions",               "otherDed",    C.err],
-              ["Extra Bonus / Allowance (add)",  "extraBonus",  C.ok],
-            ].map(([label, key, color]) => (
-              <div key={key}>
-                <label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:4, fontWeight:600 }}>{label}</label>
-                <input
-                  type="number"
-                  value={editForm[key] ?? 0}
-                  onChange={e => setEditForm(f => ({...f, [key]: e.target.value}))}
-                  style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:6, color, padding:"7px 10px", fontSize:13, fontWeight:600, outline:"none", width:"100%", boxSizing:"border-box" }}
-                />
-              </div>
-            ))}
-          </div>
+                {/* Adjust for actual payment */}
+                <div style={{ fontSize:10, fontWeight:700, color:C.txM, letterSpacing:"0.8px", marginBottom:8 }}>
+                  ADJUST FOR ACTUAL PAYMENT <span style={{fontWeight:400, color:C.txD}}>(optional bank / other adjustments)</span>
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:12 }}>
+                  {[
+                    ["Bank Transfer Charge (deduct)",  "bankCharge",  C.err],
+                    ["Other Deductions",               "otherDed",    C.err],
+                    ["Extra Bonus / Allowance (add)",  "extraBonus",  C.ok],
+                  ].map(([label, key, color]) => (
+                    <div key={key}>
+                      <label style={{ fontSize:10, color:C.txM, display:"block", marginBottom:4, fontWeight:600 }}>{label}</label>
+                      <input
+                        type="number"
+                        value={editForm[key] ?? 0}
+                        onChange={e => setEditForm(f => ({...f, [key]: e.target.value}))}
+                        style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:6, color, padding:"7px 10px", fontSize:13, fontWeight:600, outline:"none", width:"100%", boxSizing:"border-box" }}
+                      />
+                    </div>
+                  ))}
+                </div>
 
-          {/* Net preview */}
-          <div style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
-            <div style={{ fontSize:10, color:C.txD, marginBottom:6, fontWeight:600 }}>FINAL NET PAY PREVIEW</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.txM }}><span>Gross Amount</span><span>${Number(editForm.total||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>
-              {Number(editForm.bonus||0)>0     && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.ok  }}><span>+ Extra Bonus</span><span>+${Number(editForm.bonus||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
-              {Number(editForm.bankCharge||0)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Bank Charge</span><span>−${Number(editForm.bankCharge||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
-              {Number(editForm.otherDed||0)>0   && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Other Deductions</span><span>−${Number(editForm.otherDed||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
-              <div style={{ borderTop:`1px solid ${C.bdr}`, marginTop:4, paddingTop:6, display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:15 }}>
-                <span style={{color:C.txt}}>Net Total to Pay</span>
-                <span style={{color:C.ok}}>${Math.max(0, Number(editForm.total||0) + Number(editForm.bonus||0) - Number(editForm.bankCharge||0) - Number(editForm.otherDed||0)).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
-              </div>
-            </div>
-          </div>
+                {/* Final preview */}
+                <div style={{ background:C.bg, border:`1px solid ${C.bdr}`, borderRadius:8, padding:"10px 14px", marginBottom:12 }}>
+                  <div style={{ fontSize:10, color:C.txD, marginBottom:6, fontWeight:600 }}>FINAL NET PAY PREVIEW</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.txM }}>
+                      <span>Auto Net (Earnings − Deductions)</span>
+                      <span>${autoNet.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                    </div>
+                    {Number(editForm.extraBonus||0)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.ok  }}><span>+ Extra Bonus</span><span>+${Number(editForm.extraBonus||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+                    {Number(editForm.bankCharge||0)>0 && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Bank Charge</span><span>−${Number(editForm.bankCharge||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+                    {Number(editForm.otherDed||0)>0   && <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.err }}><span>− Other Deductions</span><span>−${Number(editForm.otherDed||0).toLocaleString(undefined,{minimumFractionDigits:2})}</span></div>}
+                    <div style={{ borderTop:`1px solid ${C.bdr}`, marginTop:4, paddingTop:6, display:"flex", justifyContent:"space-between", fontWeight:700, fontSize:15 }}>
+                      <span style={{color:C.txt}}>Net Total to Pay</span>
+                      <span style={{color:C.ok}}>${finalNet.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
           {/* Bank */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
@@ -1823,7 +1866,22 @@ function DistV({ crew, slips, crewPay, setCrewPay, showT, fs, fsOk, userRole, pa
           {splitRows.map((row, i) => (
             <div key={i} style={{ display:"grid", gridTemplateColumns:"1.5fr 1.5fr 1fr 30px", gap:8, alignItems:"end", background:C.bgS, padding:8, borderRadius:6 }}>
               <div><label style={{ fontSize:9, color:C.txD }}>Bank / Account</label><div style={{ fontSize:11, fontWeight:500 }}>{row.bankName} - {row.bankAccNo}</div><div style={{ fontSize:10, color:C.txM }}>{row.bankAccName} {row.label&&`(${row.label})`}</div></div>
-              <div><label style={{ fontSize:10, color:C.txM }}>USD Amount</label><input type="number" value={row.amount} onChange={e=>{ const nr=[...splitRows]; nr[i].amount=e.target.value; setSplitRows(nr); }} style={inp}/></div>
+              <div><label style={{ fontSize:10, color:C.txM }}>USD Amount</label><input type="number" value={row.amount} onChange={e=>{
+                const val = Number(e.target.value)||0;
+                const nr = [...splitRows];
+                nr[i].amount = val;
+                // Auto-balance: if editing a row and there are exactly 2 rows, auto-fill the other one
+                if (nr.length === 2) {
+                  const otherIdx = i === 0 ? 1 : 0;
+                  nr[otherIdx].amount = Math.max(0, Number((splitT.total - val).toFixed(2)));
+                }
+                // If editing row 0 with 3+ rows, distribute remainder to the last row
+                else if (nr.length > 2 && i === 0) {
+                  const otherSum = nr.slice(1, -1).reduce((a,b)=>a+(Number(b.amount)||0),0);
+                  nr[nr.length - 1].amount = Math.max(0, Number((splitT.total - val - otherSum).toFixed(2)));
+                }
+                setSplitRows(nr);
+              }} style={inp}/></div>
               <div style={{ display:"flex", alignItems:"center", height:38 }}><Btn v="ghost" s={{color:C.err,padding:0}} onClick={()=>setSplitRows(splitRows.filter((_,idx)=>idx!==i))}>✕</Btn></div>
             </div>
           ))}

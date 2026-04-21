@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { C } from "./UI";
-import { authSignIn, setupFirstAdmin } from "../services/auth";
+import { authSignIn, setupFirstAdmin, resetUserPassword } from "../services/auth";
 
 // ── Shared input style ─────────────────────────────────────────────────────
 const inp = (focused) => ({
@@ -32,8 +32,68 @@ const gradBtn = (disabled) => ({
   boxShadow: disabled ? "none" : `0 4px 20px ${C.pri}40`,
 });
 
+// ── Reset Password Form ───────────────────────────────────────────────────
+function ResetForm({ onBack }) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [focusedField, setFocused] = useState("");
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setError("");
+    setMsg("");
+    try {
+      await resetUserPassword(email);
+      setMsg("Password reset email ပို့လိုက်ပါပြီ။ သင့် Inbox ကို စစ်ဆေးကြည့်ပါ");
+    } catch (err) {
+      setError("Reset မအောင်မြင်ပါ: " + err.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <form onSubmit={handleReset}>
+      <div style={{ background: `${C.inf}10`, border: `1px solid ${C.inf}30`, borderRadius: 8, padding: "10px 13px", marginBottom: 18, fontSize: 11.5, color: C.inf }}>
+        🔑 Password မေ့နေပါသလား? သင်၏ Email ထည့်ပေးပါ။
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 5, fontWeight: 600, letterSpacing: "0.5px" }}>EMAIL</label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          style={inp(focusedField === "email")}
+          onFocus={() => setFocused("email")}
+          onBlur={() => setFocused("")}
+        />
+      </div>
+      {error && (
+        <div style={{ background: `${C.err}15`, border: `1px solid ${C.err}35`, borderRadius: 7, padding: "9px 12px", marginBottom: 14, fontSize: 11, color: C.err }}>
+          ⚠ {error}
+        </div>
+      )}
+      {msg && (
+        <div style={{ background: `${C.suc}15`, border: `1px solid ${C.suc}35`, borderRadius: 7, padding: "9px 12px", marginBottom: 14, fontSize: 11, color: C.suc }}>
+          ✅ {msg}
+        </div>
+      )}
+      <button type="submit" disabled={loading || !email} style={gradBtn(loading || !email)}>
+        {loading ? "Sending..." : "Send Reset Link →"}
+      </button>
+      <div style={{ textAlign: "center", marginTop: 20 }}>
+        <span onClick={onBack} style={{ fontSize: 11, color: C.pri, cursor: "pointer", fontWeight: 600 }}>← Back to Login</span>
+      </div>
+    </form>
+  );
+}
+
 // ── Login Form ─────────────────────────────────────────────────────────────
-function LoginForm({ onLogin }) {
+function LoginForm({ onLogin, onForgotPassword }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -76,7 +136,7 @@ function LoginForm({ onLogin }) {
           onBlur={() => setFocused("")}
         />
       </div>
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 5, fontWeight: 600, letterSpacing: "0.5px" }}>PASSWORD</label>
         <input
           type="password"
@@ -88,6 +148,11 @@ function LoginForm({ onLogin }) {
           onFocus={() => setFocused("password")}
           onBlur={() => setFocused("")}
         />
+      </div>
+      <div style={{ textAlign: "right", marginBottom: 18 }}>
+        <span onClick={onForgotPassword} style={{ fontSize: 11, color: C.txD, cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={e => e.target.style.color = C.pri} onMouseLeave={e => e.target.style.color = C.txD}>
+          Forgot Password?
+        </span>
       </div>
       {error && (
         <div style={{ background: `${C.err}15`, border: `1px solid ${C.err}35`, borderRadius: 7, padding: "9px 12px", marginBottom: 14, fontSize: 12, color: C.err }}>
@@ -164,6 +229,8 @@ function SetupForm() {
 
 // ── Main LoginPage ─────────────────────────────────────────────────────────
 export default function LoginPage({ isFirstTime }) {
+  const [view, setView] = useState("login"); // "login" | "reset"
+
   return (
     <div style={{ height: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui,sans-serif", position: "relative", overflow: "hidden" }}>
       {/* Background glow orbs */}
@@ -180,7 +247,15 @@ export default function LoginPage({ isFirstTime }) {
           <div style={{ fontSize: 10, color: C.txD, letterSpacing: "2.5px", marginTop: 3, textTransform: "uppercase" }}>SRPS Accounting System</div>
         </div>
 
-        {isFirstTime ? <SetupForm /> : <LoginForm />}
+        {isFirstTime ? (
+          <SetupForm />
+        ) : (
+          view === "login" ? (
+            <LoginForm onForgotPassword={() => setView("reset")} />
+          ) : (
+            <ResetForm onBack={() => setView("login")} />
+          )
+        )}
 
         <div style={{ textAlign: "center", marginTop: 22, fontSize: 10, color: C.txD }}>
           Mahar Unity (Thailand) Co., Ltd. © 2026

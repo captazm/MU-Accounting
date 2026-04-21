@@ -108,6 +108,21 @@ export async function setupFirstAdmin(email, password, displayName) {
   return uid;
 }
 
+// ── Emergency Recovery Setup (Temporary) ───────────────────────────────────
+export async function emergencyCreateAdmin(email, password, displayName) {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  const uid = cred.user.uid;
+  await setDoc(doc(db, "users", uid), {
+    email,
+    displayName: displayName || "Emergency Admin",
+    role: "admin",
+    createdAt: new Date().toISOString(),
+    createdBy: "emergency-recovery",
+    active: true,
+  });
+  return uid;
+}
+
 // ── Reset Password ─────────────────────────────────────────────────────────
 export async function resetUserPassword(email) {
   await sendPasswordResetEmail(auth, email);

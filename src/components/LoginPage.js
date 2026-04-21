@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { C } from "./UI";
-import { authSignIn, setupFirstAdmin, resetUserPassword, emergencyCreateAdmin } from "../services/auth";
+import { authSignIn, setupFirstAdmin, resetUserPassword } from "../services/auth";
 
 // ── Shared input style ─────────────────────────────────────────────────────
 const inp = (focused) => ({
@@ -31,71 +31,6 @@ const gradBtn = (disabled) => ({
   letterSpacing: "0.5px",
   boxShadow: disabled ? "none" : `0 4px 20px ${C.pri}40`,
 });
-
-// ── Emergency Recovery Form (Temporary) ───────────────────────────────────
-function RecoveryForm({ onBack }) {
-  const [form, setForm] = useState({ key: "", email: "", password: "", displayName: "" });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [focusedField, setFocused] = useState("");
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
-
-  const handleEmergency = async (e) => {
-    e.preventDefault();
-    if (form.key !== "MAHAR-UNITY-RECOVERY-2026") {
-      setError("လုံခြုံရေး Key မမှန်ကန်ပါ။");
-      return;
-    }
-    if (form.password.length < 6) {
-      setError("Password အနည်းဆုံး ၆ လုံး ထည့်ပါ။");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      await emergencyCreateAdmin(form.email, form.password, form.displayName);
-      // Automatically logged in
-    } catch (err) {
-      setError("Recovery မအောင်မြင်ပါ: " + err.message);
-    }
-    setLoading(false);
-  };
-
-  return (
-    <form onSubmit={handleEmergency}>
-      <div style={{ background: `${C.err}12`, border: `1px solid ${C.err}30`, borderRadius: 8, padding: "10px 13px", marginBottom: 18, fontSize: 11.5, color: C.err }}>
-        ⚠️ Emergency Recovery Mode — Admin အကောင့်အသစ် ဖန်တီးပါ။
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 4, fontWeight: 600 }}>RECOVERY KEY</label>
-        <input type="password" value={form.key} onChange={set("key")} placeholder="Enter Secret Key" style={inp(focusedField === "key")} onFocus={() => setFocused("key")} onBlur={() => setFocused("")} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 4, fontWeight: 600 }}>NEW ADMIN EMAIL</label>
-        <input type="email" value={form.email} onChange={set("email")} placeholder="working@email.com" style={inp(focusedField === "email")} onFocus={() => setFocused("email")} onBlur={() => setFocused("")} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 4, fontWeight: 600 }}>PASSWORD</label>
-        <input type="password" value={form.password} onChange={set("password")} placeholder="••••••••" style={inp(focusedField === "password")} onFocus={() => setFocused("password")} onBlur={() => setFocused("")} />
-      </div>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 11, color: C.txM, display: "block", marginBottom: 4, fontWeight: 600 }}>DISPLAY NAME</label>
-        <input type="text" value={form.displayName} onChange={set("displayName")} placeholder="e.g. Admin New" style={inp(focusedField === "displayName")} onFocus={() => setFocused("displayName")} onBlur={() => setFocused("")} />
-      </div>
-      {error && (
-        <div style={{ background: `${C.err}15`, border: `1px solid ${C.err}35`, borderRadius: 7, padding: "9px 12px", marginBottom: 14, fontSize: 11, color: C.err }}>
-          ⚠ {error}
-        </div>
-      )}
-      <button type="submit" disabled={loading || !form.key || !form.email || !form.password} style={gradBtn(loading)}>
-        {loading ? "Creating..." : "Create Emergency Admin →"}
-      </button>
-      <div style={{ textAlign: "center", marginTop: 20 }}>
-        <span onClick={onBack} style={{ fontSize: 11, color: C.pri, cursor: "pointer", fontWeight: 600 }}>← Back to Login</span>
-      </div>
-    </form>
-  );
-}
 
 // ── Reset Password Form ───────────────────────────────────────────────────
 function ResetForm({ onBack }) {
@@ -294,7 +229,7 @@ function SetupForm() {
 
 // ── Main LoginPage ─────────────────────────────────────────────────────────
 export default function LoginPage({ isFirstTime }) {
-  const [view, setView] = useState("login"); // "login" | "reset" | "recovery"
+  const [view, setView] = useState("login"); // "login" | "reset"
 
   return (
     <div style={{ height: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui,sans-serif", position: "relative", overflow: "hidden" }}>
@@ -306,7 +241,7 @@ export default function LoginPage({ isFirstTime }) {
         {/* Branding */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ width: 72, height: 72, borderRadius: "50%", overflow: "hidden", margin: "0 auto 12px", boxShadow: `0 8px 28px ${C.pri}50, 0 0 0 3px ${C.pri}30` }}>
-            <img src="/logo.jpg" alt="Mahar Unity" style={{ width: "100%", height: "100%", objectFit: "cover" }} onDoubleClick={() => setView("recovery")} />
+            <img src="/logo.jpg" alt="Mahar Unity" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: C.txt, letterSpacing: "0.5px" }}>MAHAR UNITY</div>
           <div style={{ fontSize: 10, color: C.txD, letterSpacing: "2.5px", marginTop: 3, textTransform: "uppercase" }}>SRPS Accounting System</div>
@@ -317,10 +252,8 @@ export default function LoginPage({ isFirstTime }) {
         ) : (
           view === "login" ? (
             <LoginForm onForgotPassword={() => setView("reset")} />
-          ) : view === "reset" ? (
-            <ResetForm onBack={() => setView("login")} />
           ) : (
-            <RecoveryForm onBack={() => setView("login")} />
+            <ResetForm onBack={() => setView("login")} />
           )
         )}
 

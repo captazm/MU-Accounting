@@ -30,11 +30,18 @@ service cloud.firestore {
       // Allow create ONLY if no users exist yet (first-time setup)
       // OR if an active admin is creating the account
       allow create: if isActiveAdmin() ||
-        (request.auth != null &&
-         !exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+        (request.auth != null && request.auth.uid == uid &&
+         !exists(/databases/$(database)/documents/_meta/setup));
 
       // Only admin can delete users
       allow delete: if isActiveAdmin();
+    }
+
+    // ── Meta collection (for setup state) ─────────────────────────────────
+    match /_meta/{docId} {
+      allow read: if true;
+      allow write: if isActiveAdmin() || 
+        (docId == "setup" && !exists(/databases/$(database)/documents/_meta/setup) && request.auth != null);
     }
 
     // ── Crew Registry ─────────────────────────────────────────────────────

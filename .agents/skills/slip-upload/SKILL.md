@@ -1,30 +1,63 @@
 ---
-name: slip-upload
-description: How to perform Slip Upload and assign payments to crew members
+name: slip-verification
+description: How to upload signed payment slips for verification before marking crew as Paid (Tab 4 of Payment Distribution Hub)
 ---
-# Slip Upload Workflow
+# Signed Slip Verification
 
-This workflow describes how to assign matched bank payments to specific crew members in the system.
+After a payment is **Processed** (Distribution stage), you must upload the signed slip from the crew member as proof before Admin can mark it Paid.
 
-## 1. Access Slip Upload
-- Navigate to the **Slip Upload** tab from the app sidebar.
+> **Note:** This replaces the old standalone "Slip Upload" tab. The current app integrates signed slip upload into Tab 4 (Verification) of the Payment Distribution Hub.
 
-## 2. Select Payment and Crew
-- In the "Upload Salary Slip" section, click the **Payment** dropdown.
-- Select a Matched Payment (Only payments that have been successfully reconciled will appear here).
-- A list of crew members associated with the payment's client will be displayed.
-- **Duplicate Prevention:** Note that crew members who have already been assigned to a slip for this payment will be automatically hidden to prevent duplicate salary assignments. The system will alert you to the number of crew already assigned.
-- Use the **Checkboxes** to select the specific crew members that the payment should be distributed to, or click **[All]** to select everyone.
+## 1. Access Verification Tab
 
-## 3. Upload the Slip
-- Click the **Upload (N crew)** button at the bottom.
-- The system will generate a new SLIP-XXX record to track this distribution.
-- The status for those crew members will change to **"Slip Received"**.
-- Your selection of crew members is locked to that slip.
+- Open **Payment Distribution** from the sidebar.
+- Click the **Verification** tab (4th tab).
+- All Processed records are listed.
 
-## 4. Rectifying Mistakes (Deleting a Slip)
-- If you accidentally assigned the wrong crew members or uploaded an erroneous slip, you can safely delete it by clicking the red **Delete** button next to the slip in the Slip History section.
-- Deleting the slip releases the crew members, making them available to be reassigned under the payment again.
+## 2. Upload Signed Slip
 
-## 5. Next Steps
-- Proceed to the **Payment Distribution** workflow to finalize the process and mark the crew members as paid.
+For each record without a signed slip:
+- The Slip column shows ⚠ Missing.
+- Click **📎 Upload Slip** in the Action column.
+- Native file picker opens — select an image (JPG/PNG) or PDF of the signed slip.
+- File uploads to Firebase Storage at `signedSlips/{paymentId}_{timestamp}_{filename}`.
+- The record's `signedSlipUrl` is updated automatically.
+- Toast notification confirms "Signed slip uploaded ✓".
+
+## 3. Replace an Uploaded Slip
+
+If you uploaded the wrong file:
+- Click **🔄 Replace** in the Action column.
+- Select a new file. Old URL is overwritten.
+- Toast confirms "Slip replaced ✓".
+
+## 4. Verify and Mark Paid (Admin)
+
+After a slip is uploaded:
+- The Slip column shows 👁️ View Slip + ✓ Uploaded badge.
+- **Admin** sees the **✓ Mark Paid** button.
+- Click Mark Paid → status: `Paid`.
+- The system automatically updates the crew's registry:
+  - `paidDepFees += depFeeDed` (cumulative DEP paid)
+  - `balanceDepFees -= depFeeDed` (remaining DEP)
+  - `accumulatedLeavePay += actLeavePay` (returnable on sign-off)
+
+## 5. Non-Admin Behavior
+
+If you are an Accountant (non-admin):
+- You can upload/replace slips.
+- After upload, you'll see "Waiting for admin" instead of Mark Paid.
+- Only Admin can complete the Paid transition.
+
+## File Storage
+
+- All signed slips are stored in Firebase Storage at `signedSlips/`.
+- Filenames are namespaced: `{paymentId}_{timestamp}_{originalfilename}`.
+- Public download URLs are kept in `crewPayments.signedSlipUrl`.
+- Click 👁️ View Slip to open in new tab.
+
+## Common Pitfalls
+
+- Mark Paid is disabled if no slip uploaded — upload first.
+- File size — Firebase Storage default rules limit upload size; very large PDFs may fail.
+- Browser file picker can't be triggered programmatically — must be initiated by user click.

@@ -1,29 +1,72 @@
 ---
 name: reconciliation
-description: How to reconcile an invoice payment from a client
+description: How to reconcile incoming bank payments against generated bills using OCR validation
 ---
 # Reconciliation Workflow
 
-This workflow explains how to verify incoming bank payments against generated invoices.
+Verify incoming client bank payments against generated invoices, using OCR to validate the slip amount. On successful match, the system auto-generates payroll records (Pending status) for distribution.
 
-## 1. Access Reconciliation Page
-- Navigate to the **Reconciliation** tab from the app sidebar.
+## 1. Access Reconciliation
+- Navigate to the **Reconciliation** tab.
 
-## 2. Record the Payment
-- In the "Record Payment & Bank Slip Verification" section, first **Select the Bill** that corresponds to the client payment. (Only bills with a "Sent" status will be available).
-- **Upload Bank Slip for OCR Validation** (Optional but recommended):
-  - Upload the payment screenshot or image file provided by the owner.
-  - The system will automatically use OCR (Optical Character Recognition) to scan the image for numbers entirely within your browser.
-  - If the scanner extracts a number that perfectly matches the predicted total from the bill, the **Amount** field will be automatically populated, and a green `✅ OCR Verified` badge will appear.
-  - If the numbers do not match, a red warning badge will appear showing the largest recognized value against the expected value. You can then investigate or manually input the amount.
-- Enter the Bank **Reference Number** (Ref) for the transaction.
-- Enter the **Date** the payment was received.
-- Click **Reconcile & Create Resulting Slips**.
+## 2. Select Bill
+- In "Record Payment & Bank Slip Verification" section.
+- The Bill dropdown lists only bills with status `Sent`.
+- Selecting a bill auto-fills the Amount field with bill total.
 
-## 3. Verify the Outcome
-- The system checks if the final entered amount matches the selected Bill.
-- **MATCH (Difference < $0.01)**: The payment is perfectly matched. A PAY-XXX record will be generated, and the Bill's status shifts to **PAID**.
-- **MISMATCH (Difference >= $0.01)**: If the amount is under or over, an orange warning will denote the mismatch. You'll see "Mismatch on BILL-XXX. Difference: $XX". A PAY-XXX record is generated but the invoice is not fully cleared. You must report this discrepancy to the client.
+## 3. OCR Bank Slip Validation (Recommended)
 
-## 4. Next Steps
-- For matched payments, proceed to the **Slip Upload** workflow to assign funds to specific crew members.
+- Click the file input under "Upload Bank Slip for OCR Validation".
+- Select an image of the bank slip (JPG/PNG).
+- The slip uploads to Firebase Storage at `slips/{timestamp}_{filename}`.
+- Tesseract.js scans the image in-browser for numbers.
+- A live preview of the slip is displayed.
+- Outcome:
+  - ✅ **Match found** — amount auto-fills, green badge: "OCR Verified".
+  - ❌ **No match** — orange warning shows largest number found vs expected total. You can manually correct or override.
+
+## 4. Enter Reference & Date
+- **Ref** — Bank transaction reference number.
+- **Date** — receipt date (defaults to today).
+
+## 5. Reconcile
+
+Click **Reconcile & Generate Payroll**.
+
+```
+Diff = ClientAmount − BillTotal
+|Diff| < $0.01    → ✅ MATCH
+|Diff| >= $0.01   → ⚠️ MISMATCH
+```
+
+### MATCH
+
+- New `payments` doc created (PAY-XXX).
+- Bill status → `Paid`.
+- **Auto-generates `crewPayments` records** (one per crew in the bill) with status `Pending`.
+- Each new crewPayment carries: salary, ownerPaid, actualHA, manning, leavePay, depFeeDed, paidDepFees, balanceDepFees, accumulatedLeavePay, bank info.
+- Toast: "Matched!" — proceed to **Payment Distribution → Edit & Submit**.
+
+### MISMATCH
+
+- New PAY-XXX created with `match: false` and `diff` recorded.
+- Bill remains Sent. Notify client.
+- Tip: If owner intentionally paid different amount, **Revise** the bill in Monthly Billing first to match.
+
+## 6. Payment History Table
+
+Below the form. Lists all PAY-XXX records:
+- ID, Bill, Client, Amount, Ref, Date, Status (Matched/Mismatch), Slip view link.
+
+## OCR Notes
+
+- Tesseract.js runs entirely in the browser — no backend OCR service.
+- Works best with clear, high-contrast slips.
+- If OCR fails, just enter amount manually and proceed.
+
+## What Happens After a Match
+
+The Reconciliation match is the trigger that creates `Pending` payroll records. Next steps:
+1. Go to **Payment Distribution** tab.
+2. Click **Edit & Submit** sub-tab — you'll see new Pending records.
+3. Edit each record's earnings/deductions, then submit for Admin approval.

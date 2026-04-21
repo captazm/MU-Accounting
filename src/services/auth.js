@@ -97,6 +97,14 @@ export async function setupFirstAdmin(email, password, displayName) {
     createdBy: "system",
     active: true,
   });
+  
+  // Lock down further setups
+  await setDoc(doc(db, "_meta", "setup"), {
+    setupComplete: true,
+    setupAt: new Date().toISOString(),
+    setupBy: uid
+  });
+  
   return uid;
 }
 

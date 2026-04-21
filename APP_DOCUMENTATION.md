@@ -1,640 +1,791 @@
-# 🚢 MAHAR UNITY SRPS — Accounting App သုံးစွဲနည်း လမ်းညွှန်
+# 🚢 MAHAR UNITY SRPS — Accounting App Documentation
 
-> **Mahar Unity (Thailand) Co., Ltd** — Seafarer Recruitment & Payroll System  
-> Version: April 2026 | Platform: Web App (React + Firebase Firestore)
+> **Mahar Unity Company Limited (Marine Services)** — Seafarer Recruitment & Payroll System
+> Version: April 2026 | Stack: React + Firebase (Firestore, Auth, Storage, Hosting)
 
 ---
 
 ## 📋 မာတိကာ
 
 1. [App Overview](#1-app-overview)
-2. [ဘေးပြင် Sidebar နှင့် Navigation](#2-ဘေးပြင်-sidebar-နှင့်-navigation)
-3. [Menu 1 — Dashboard](#3-menu-1--dashboard)
-4. [Menu 2 — Crew Registry](#4-menu-2--crew-registry)
-5. [Menu 3 — Monthly Billing](#5-menu-3--monthly-billing)
-6. [Menu 4 — Reconciliation](#6-menu-4--reconciliation)
-7. [Menu 5 — Slip Upload](#7-menu-5--slip-upload)
-8. [Menu 6 — Payment Distribution](#8-menu-6--payment-distribution)
-9. [Menu 7 — Status Board](#9-menu-7--status-board)
-10. [App ၏ ငွေကြေး Workflow (End-to-End)](#10-app-၏-ငွေကြေး-workflow-end-to-end)
-11. [Data Fields အသေးစိတ်](#11-data-fields-အသေးစိတ်)
-12. [Firestore Database ဆက်သွယ်မှု](#12-firestore-database-ဆက်သွယ်မှု)
+2. [Authentication & Roles](#2-authentication--roles)
+3. [Sidebar Navigation](#3-sidebar-navigation)
+4. [Menu 1 — Dashboard](#4-menu-1--dashboard)
+5. [Menu 2 — Crew Registry](#5-menu-2--crew-registry)
+6. [Menu 3 — Monthly Billing](#6-menu-3--monthly-billing)
+7. [Menu 4 — Reconciliation](#7-menu-4--reconciliation)
+8. [Menu 5 — Payment Distribution Hub (5-tab workflow)](#8-menu-5--payment-distribution-hub)
+9. [Menu 6 — Status Board](#9-menu-6--status-board)
+10. [Menu 7 — User Management](#10-menu-7--user-management)
+11. [Business Logic — Salary, DEP Fees, Leave Pay](#11-business-logic--salary-dep-fees-leave-pay)
+12. [End-to-End Workflow](#12-end-to-end-workflow)
+13. [Data Schema](#13-data-schema)
+14. [Firestore & Security](#14-firestore--security)
 
 ---
 
 ## 1. App Overview
 
-**Mahar Unity SRPS Accounting App** သည် သင်္ဘောသားများ (Seafarers/Crew) ၏ လစာ၊ ငွေတောင်းခံလွှာ (Invoice/Billing) နှင့် ပေးချေမှုများကို စီမံခန့်ခွဲသော Web Application တစ်ခုဖြစ်သည်။
+**Mahar Unity SRPS Accounting App** သည် သင်္ဘောသား (Seafarers) များ၏ ငွေတောင်းခံမှုနှင့် လစာထုတ်ပေးခြင်းကို စီမံခန့်ခွဲသော web-based accounting system ဖြစ်သည်။
 
-### App၏ အဓိက လုပ်ဆောင်ချက်များ
+### Core Features
 
-| အဆင့် | လုပ်ဆောင်ချက် | ရည်ရွယ်ချက် |
-|--------|----------------|--------------|
-| 1 | Crew Registry | သင်္ဘောသား အချက်အလက်များ သိမ်းဆည်းခြင်း |
-| 2 | Monthly Billing | ဖောက်သည်ထံ လစဉ် Invoice ထုတ်ခြင်း |
-| 3 | Reconciliation | ငွေလက်ခံပြီး Invoice နှင့် တိုက်ဆိုင်စစ်ဆေးခြင်း |
-| 4 | Slip Upload | ငွေပေးချေမည့် Crew List ကို Confirm ခြင်း |
-| 5 | Payment Distribution | Crew တစ်ဦးချင်းထံ လစာ ထုတ်ပေးမှတ်တမ်းတင်ခြင်း |
-| 6 | Status Board | Crew အားလုံး၏ ငွေပေးချေမှု အခြေအနေ ကြည့်ရှုခြင်း |
+| # | Module | ရည်ရွယ်ချက် |
+|---|--------|--------------|
+| 1 | **Crew Registry** | Crew အချက်အလက် (salary, bank, DEP fees, leave pay) သိမ်းခြင်း |
+| 2 | **Monthly Billing** | Client (ship owner) ထံ လစဉ် Invoice ထုတ်ခြင်း |
+| 3 | **Reconciliation** | Bank slip OCR validation ဖြင့် Invoice ငွေ matching |
+| 4 | **Payment Distribution Hub** | 5-stage workflow (Edit → Approve → Distribute → Verify → Paid) |
+| 5 | **Status Board** | Crew တစ်ဦးချင်း payment status by month |
+| 6 | **Dashboard** | KPI overview, top clients, payment progress |
+| 7 | **User Management** | Admin / Accountant role assignment |
 
----
+### Technology Stack
 
-## 2. ဘေးပြင် Sidebar နှင့် Navigation
-
-App ဖွင့်လျှင် ဘယ်ဘက်တွင် **Sidebar** တစ်ခု တွေ့ရမည်။
-
-```
-┌─────────────────┐
-│  [M] MAHAR UNITY│  ← Logo (နှိပ်လျှင် Sidebar ချုံ့/ဆန့်သည်)
-│    SRPS ACCOUNTING│
-├─────────────────┤
-│  Dashboard       │
-│  Crew Registry   │
-│  Monthly Billing │
-│  Reconciliation  │
-│  Slip Upload     │
-│  Payment Dist.   │
-│  Status Board    │
-├─────────────────┤
-│  ● Firestore Connected │  ← Connection Status
-│  145 crew              │  ← Crew စုစုပေါင်း
-│  [Migrate to Firestore]│  ← (Local Mode တွင်သာ ပေါ်သည်)
-└─────────────────┘
-```
-
-### Sidebar အသေးစိတ်
-
-- **Logo (M)** ကို နှိပ်လျှင် Sidebar သည် ချုံ့ (collapsed, icon only) / ဆန့် (expanded) ပြောင်းသည်
-- **● Firestore Connected** (အစိမ်းရောင်) = Cloud database နှင့် ချိတ်ဆက်ပြီး
-- **● Local Mode** (လိမ္မော်ရောင်) = Offline mode, data ကို cloud တွင် မသိမ်းသေး
-- **Migrate to Firestore** button = Local data ကို Firestore Cloud သို့ upload လုပ်သည်
-- ညာဘက် **top bar** တွင် လက်ရှိ menu နာမည်နှင့် လ/နှစ် ပေါ်သည်
+- **Frontend:** React 18 (CRA) — single `App.js`, inline styles, no Tailwind
+- **Backend:** Firebase Firestore (real-time DB), Firebase Auth (email/password), Firebase Storage (slip uploads)
+- **PDF Export:** Browser native `window.print()` with custom HTML templates
+- **OCR:** Tesseract.js (in-browser) for bank slip amount validation
+- **Hosting:** Firebase Hosting
 
 ---
 
-## 3. Menu 1 — Dashboard
+## 2. Authentication & Roles
 
-**Tab ID:** `dashboard`  
-**ရည်ရွယ်ချက်:** App တစ်ခုလုံး၏ အနှစ်ချုပ် Overview ကြည့်ရှုရန်
+### Login
 
-### Dashboard တွင် ဘာတွေပါသည်
+App ဖွင့်လျှင် Login Page ပေါ်လာသည်။ Firebase Auth ဖြင့် email/password login လုပ်ရသည်။
 
-#### 📊 Summary Stats (Cards 4 ခု)
+**First-time Setup:** Firestore မှာ user တစ်ဦးမှမရှိသေးပါက ပထမဆုံး user ကို **Admin** အဖြစ် auto-create လုပ်သည်။
 
-| Card | ပြသသည် | နှိပ်လျှင် |
-|------|---------|----------|
-| 👥 **Total Crew** | Crew စုစုပေါင်း အရေအတွက် + Vessel အရေအတွက် | Crew Registry သို့ ပြောင်း |
-| 📄 **Bills** | ထုတ်ထားသော Invoice အရေအတွက် | Monthly Billing သို့ ပြောင်း |
-| 💰 **Billed** | Invoice စုစုပေါင်း ပမာဏ + လက်ခံပြီး ပမာဏ | — |
-| ✅ **Paid** | ငွေထုတ်ပြီး Crew/စုစုပေါင်း | Status Board သို့ ပြောင်း |
+### Role Types
 
-#### 📈 Client Bar Chart
+| Role | Permission |
+|------|------------|
+| **Admin** | All actions: approve payroll, mark paid, delete records, user management |
+| **Accountant** | Most read/write actions, EXCEPT: cannot approve, cannot mark paid, cannot delete |
 
-- **"Top Clients by Owner Paid"** — Client တစ်ဦး၏ Crew အားလုံး၏ Owner Paid ငွေ ပေါင်းပြသော Bar Chart
-- Client 8 ဦးအထိ ပြသပြီး အများဆုံးငွေနှင့် Client ကို အသိနိမ့်ဆုံးသို့ စီပြသည်
-- Bar တစ်ခုချင်းတွင် Client နာမည်၊ ငွေပမာဏ နှင့် Crew အရေအတွက် ပါသည်
+### Role-based UI
 
-### Dashboard — Workflow
-
-```
-App ဖွင့် → Firestore မှ Data Load → Dashboard Stats ပြသ
-                                    ↗ Crew Card နှိပ် → Crew Registry
-                                    ↗ Bills Card နှိပ် → Monthly Billing
-                                    ↗ Paid Card နှိပ် → Status Board
-```
+- Admin only menu — **User Management** tab ပေါ်သည်
+- Admin only buttons — **Approve**, **Mark Paid**, **Delete** buttons ပေါ်သည်
+- Inactive users (Firestore `users/{uid}.active = false`) login ဝင်လို့မရ
 
 ---
 
-## 4. Menu 2 — Crew Registry
-
-**Tab ID:** `crew`  
-**ရည်ရွယ်ချက်:** သင်္ဘောသား (Seafarer) အချက်အလက်များ ကြည့်ရှု၊ ထည့်သွင်း၊ ပြင်ဆင်ရန်
-
-### Crew Registry တွင် ဘာတွေပါသည်
-
-#### 🔍 Filter Bar (အပေါ်ဆုံး)
+## 3. Sidebar Navigation
 
 ```
-[Search name/ID...]  [All Vessels ▼]  [All Clients ▼]
+┌─────────────────────────────┐
+│  [M] MAHAR UNITY            │  ← Logo (နှိပ်ရင် sidebar collapse/expand)
+│      SRPS ACCOUNTING        │
+├─────────────────────────────┤
+│  📊 Dashboard               │
+│  👥 Crew Registry           │
+│  📄 Monthly Billing         │
+│  🔄 Reconciliation          │
+│  💸 Payment Dist.           │
+│  📋 Status Board            │
+│  👤 User Management         │  ← Admin only
+├─────────────────────────────┤
+│  [Avatar] User Name         │
+│  ● admin / accountant       │
+│  ● Firestore Live · 145 crew│
+│  → Sign Out                 │
+└─────────────────────────────┘
 ```
 
-- **Search** — Crew နာမည် သို့မဟုတ် ID (C001, C002...) ဖြင့် ရှာနိုင်သည်
-- **All Vessels** — Vessel (သင်္ဘောနာမည်) ဖြင့် filter ခြင်း
-- **All Clients** — Client (ဖောက်သည်) ဖြင့် filter ခြင်း
+- **Sidebar collapsed mode** — icons only, hover ဖြင့် label ပေါ်
+- **Live status indicator** — အစိမ်း dot = Firestore connected, ဝါ = connecting
+- **Top bar** — Active menu name + current date + connection status
 
-#### 📊 Crew Table
+---
 
-Table columns:
+## 4. Menu 1 — Dashboard
+
+**Tab ID:** `dashboard`
+
+### လုပ်ဆောင်ချက်
+
+App overview ကို တစ်နေရာထဲ ကြည့်ရှုနိုင်သည် — month picker ဖြင့် မည်သည့် salary month ကို focus လုပ်မည်ကို ရွေးနိုင်သည်။
+
+### Layout
+
+**1. Month Selector Bar**
+- `‹  2026-04 ▼  ›` — month picker
+- `Salary: April 2026 → Payment expected: May 2026` (salary month vs payment month)
+
+**2. Summary Stats (4 cards)**
+
+| Card | ပြသသည် | Click |
+|------|---------|-------|
+| 👥 **Total Crew** | စုစုပေါင်း crew + vessel count | → Crew Registry |
+| 📄 **Bills This Month** | လအတွင်း bill အရေအတွက် + total USD | → Monthly Billing |
+| 💰 **Received** | လက်ခံပြီးသား USD + ကျန်ငွေ | — |
+| ✅ **Salary Paid** | `paid/total` crew + `%` | → Status Board |
+
+**3. Salary Payment Progress Bar**
+- Linear progress bar (cyan→green gradient)
+- Legend: 🟢 Paid · 🔵 Slip Received · 🟡 Pending
+
+**4. Top Clients Bar Chart**
+- Top 8 clients by `ownerPaid` total (descending)
+- Horizontal bars with crew count per client
+
+---
+
+## 5. Menu 2 — Crew Registry
+
+**Tab ID:** `crew`
+
+### လုပ်ဆောင်ချက်
+
+Crew (seafarer) တစ်ဦးချင်း၏ master data ကို စီမံခန့်ခွဲခြင်း — salary, DEP fees, leave pay, bank accounts, etc.
+
+### Filter Bar
+
+```
+[🔍 Search name/ID...]   [All Vessels ▼]   [All Clients ▼]
+```
+
+### Crew Table — Columns
 
 | Column | အဓိပ္ပါယ် |
 |--------|----------|
-| **No** | Crew နံပါတ် (1, 2, 3...) |
+| **No** | Sequential number |
 | **ID** | Unique ID (C001, C002...) |
-| **Name** | Crew နာမည် |
-| **Rank** | ရာထူး (2O, 3E, AB, OS...) |
-| **Vessel** | တင်ထားသည့် သင်္ဘောနာမည် |
-| **Client** | ဖောက်သည် (ကုမ္ပဏီ/agent) |
-| **Join** | သင်္ဘောတက်သည့် ရက်စွဲ |
-| **OwnerPaid** | Ship Owner မှ Mahar Unity ကို ပေးသော USD ပမာဏ |
-| **Salary** | Crew ၏ လစာ (USD) |
-| **Office** | Office fee (USD) — Training/document cost |
-| **Manning** | Manning fee (USD) |
-| **Remark** | မှတ်ချက် (Agent နာမည်၊ Cash Back info) |
-| **Edit** | ပြင်ဆင်ရန် Button |
+| **Name** | Crew full name |
+| **Rank** | 2O, 3E, AB, OS, Master, Chief, etc. |
+| **Vessel** | သင်္ဘောအမည် |
+| **Client** | Ship owner / agent |
+| **Join** | Sign-on date |
+| **OwnerPaid** | Owner က MU ကို ပေးတဲ့ ငွေ (salary + manning fees ပေါင်း) |
+| **Salary** | Crew ၏ actual monthly salary (USD) |
+| **DEP FEES** | Departure fees per month |
+| **Paid Dep** | သင်္ဘောမတက်ခင် ပေးခဲ့သော DEP fees |
+| **Bal Dep** | ကျန်ရှိနေသော DEP fees balance |
+| **Manning** | Manning fee (MU commission, owner side ဖြတ်) |
+| **Leave Pay** | Leave pay per month (registry rate) |
+| **Leave Pay (Acc)** | Auto-accumulated leave pay (ပေးရန်ကျန်) |
+| **Bank/Acc No/Acc Name** | Primary bank details |
+| **Type** | bank / cash |
+| **Remark** | မှတ်ချက် |
 
-#### ➕ Crew ထည့်သွင်းခြင်း
+### Crew တစ်ဦး Add/Edit လုပ်ခြင်း
 
-1. **"+ Add"** button နှိပ်သည်
-2. Modal popup ပေါ်လာသည်
-3. Field များ ဖြည့်သည် — Name*, Rank, Vessel, Client, Join Date, OwnerPaid, Salary, Office, Manning, Remark
-4. **"Save"** နှိပ်သည်
-5. Firestore Connected ဆိုလျှင် **Firestore တွင် တိုက်ရိုက် သိမ်း**သည်
+**Add New** button နှိပ်ရင် modal ပေါ်လာသည်:
 
-#### ✏️ Crew ပြင်ဆင်ခြင်း
+**Required field:** Name *
 
-1. Table ၌ Crew row တွင် **"Edit"** button နှိပ်သည်
-2. Modal popup ပေါ်လာသည် (ID field disable — မပြင်နိုင်)
-3. Data ပြင်ပြီး **"Save"** နှိပ်သည်
+**Numerical fields:** ownerPaid, salary, office (DEP fees/month), paidDepFees, balanceDepFees, manningFees, leavePay
 
-### Crew Registry — Workflow
+**Read-only field:** `accumulatedLeavePay` — payment process ပြီးတိုင်း auto-update ဖြစ်သည်
 
-```
-Crew Registry ဖွင့် → Crew List ပြသ (Filter ဖြင့် ရှာနိုင်)
-        ↓
-   [+ Add] နှိပ် → Add Crew Modal → Data ဖြည့် → Save → Crew List Update
-        ↓
-   [Edit] နှိပ် → Edit Crew Modal → Data ပြင် → Save → Crew List Update
-```
+**Bank Accounts (Multi-bank support):**
+- Crew တစ်ဦးတည်းမှာ bank account များစွာ register လုပ်နိုင်သည်
+- ပထမဆုံး account က Primary (top-level fields ထဲကို sync ဖြစ်)
+- KBZ, AYA, A Bank, CB, MAB, Yoma, Kpay, Aya Pay, Other တို့ ရှိသည်
+
+**Bulk CSV Import:** CSV file တစ်ခုလုံးကို တစ်ခါတည်း import လုပ်နိုင်သည် (headers: name, rank, vessel, client, ownerpaid, salary, office, manningfees, leavepay, paiddepfees, balancedepfees, etc.)
 
 ---
 
-## 5. Menu 3 — Monthly Billing
+## 6. Menu 3 — Monthly Billing
 
-**Tab ID:** `billing`  
-**ရည်ရွယ်ချက်:** Client (ဖောက်သည်) ထံ လစဉ် Invoice (Bill) ထုတ်လုပ်ရန်
+**Tab ID:** `billing`
 
-### Invoice ထုတ်ခြင်း
+### လုပ်ဆောင်ချက်
 
-#### Generate Monthly Bill Section
+Client (ship owner) ထံ ပို့ရမည့် monthly invoice (bill) ကို generate, edit, send လုပ်ရန်။
 
-```
-[Client: Select ▼]  [Month: 2026-04]  [Generate]
-```
-
-**လုပ်ဆောင်ပုံ:**
-1. **Client** ရွေးချယ်သည် (မည်သည့် ဖောက်သည်ထံ Invoice ထုတ်မည်နည်း)
-2. **Month** ရွေးချယ်သည် (ဥပမာ — 2026-04)
-3. **"Generate"** နှိပ်သည်
-
-**System မှ အလိုအလျောက် တွက်ချက်သည်:**
+### Generate Bill
 
 ```
-အဆိုပါ Client ၏ Crew များကို ယူသည်
-       ↓
-Crew တစ်ဦးချင်း ဆိုလျှင်:
-  - Join Date ကို စစ်ဆေးသည်
-  - ၎င်းလ အတွင်း Join ဆိုရင် → (OwnerPaid ÷ လခန်းရက်) × တကယ်ရက်
-  - ပုံမှန် Onboard ဆိုရင် → OwnerPaid အပြည့်
-       ↓
-HA (Hire Amount) တွက်ချက်သည်
-       ↓
-Bill ဖန်တီးသည် (Status: Draft)
+[Client ▼]   [Month: 2026-04]   [Generate]
 ```
 
-#### Bill Status အဆင့်ဆင့်
+**Special client groups:**
+- `Mr.Xing & Mr.Zhong` → XING + MR.ZHONG client list ပေါင်း
+- `CHH (All)` → "CHH" ဖြင့် စသော client အားလုံး ပေါင်း
+
+**Auto-calculation per crew:**
+
+```
+For each crew:
+   Days in Month (DIM)        = day count of selected month
+   Days on Board (DOB)        = DIM, OR pro-rated by joinDate
+   Officer? (master|chief|officer|engineer|cadet)
+       Leave pay rate         = 5% (Officer) | 10% (Rating)
+   Actual HA (ha)             = ownerPaid × DOB/DIM
+   Actual Manning             = manningFees × DOB/DIM
+   Actual Leave Pay           = (salary × leaveRate) × DOB/DIM
+   DEP Fee Deducted           = balanceDepFees (default — adjustable)
+   Total Payment (Owner)      = HA + bonus + pdeFees + visaFees + workingGear − POB
+   Net Crew Pay               = TotalPayment − Manning − LeavePay − DepFeeDed
+```
+
+### Bill Status Flow
 
 ```
 Draft → [Send] → Sent → [Reconcile] → Paid
+       ↑           |
+       └──[Revise]─┘
 ```
 
 | Status | အဓိပ္ပါယ် |
 |--------|----------|
-| **Draft** | ထုတ်ထားပြီး၊ မပို့ရသေး |
-| **Sent** | Client ထံ ပို့ပြီး၊ ငွေမရသေး |
-| **Paid** | ငွေလက်ခံပြီး၊ Reconcile ဆင်းပြီး |
+| **Draft** | Editable, fees ထည့်/ပြင်နိုင် |
+| **Sent** | Client ထံ ပို့ပြီး — read-only (Revise နှိပ်ရင် Draft ပြန်ဖြစ်) |
+| **Paid** | Reconciliation ပြီးသား |
 
-#### Bill Details Table
+### Bill Details Table — 19 columns
 
-Bill တစ်ခုကို **"Details"** နှိပ်လျှင် ပေါ်လာသော columns:
+| Column | Edit (Draft) | Description |
+|--------|--------------|-------------|
+| Name, Sign On, Wages/M, From, To | ❌ | Crew + period info |
+| Days on Board | ✏️ | Auto-recalc HA/Manning/LeavePay |
+| Days of Month | ❌ | Read-only |
+| Actual HA | ❌ | Auto-calculated |
+| **POB(-)** | ✏️ | Paid On Board (deducts from Owner Total) |
+| Bonus, PDE Fees, VISA, WG | ✏️ | Adjustable additions |
+| **Owner Total** | ❌ | `HA + Bonus + PDE + VISA + WG − POB` |
+| Manning(-) | ❌ | Auto from registry |
+| Leave(-) | ❌ | Auto by officer/rating rate |
+| **DepFee(-)** | ✏️ | DEP fee deduction this month |
+| **Crew Net** | ❌ | `Owner Total − Manning − Leave − DepFee` |
+| Remark | ✏️ | Bill-specific note |
 
-| Column | အဓိပ္ပါယ် |
-|--------|----------|
-| **#** | Serial Number |
-| **Vessel** | သင်္ဘောနာမည် |
-| **Rank** | ရာထူး |
-| **Name** | Crew နာမည် |
-| **W/M** | OwnerPaid (Wages per Month) |
-| **Days** | တကယ် Onboard ရက် |
-| **D/M** | ထိုလ၏ စုစုပေါင်းရက် |
-| **HA** | Actual Hire Amount (တွက်ထားပြီး) |
-| **Shift** | Shift Change Fees (Draft တွင် ဖြည့်နိုင်) |
-| **PDE** | PDE Fees (Draft တွင် ဖြည့်နိုင်) |
-| **VISA** | Visa Fees (Draft တွင် ဖြည့်နိုင်) |
-| **Gear** | Working Gear (Draft တွင် ဖြည့်နိုင်) |
-| **Total** | HA + Extra Fees |
+### Export Options
 
-> **မှတ်ချက်:** Draft Status တွင်သာ Shift/PDE/VISA/Gear fees ကို ပြင်ဆင်နိုင်သည်။ Sent/Paid ဖြစ်ပြီးလျှင် read-only ဖြစ်သည်။
+- **📊 Download Excel** — CSV download
+- **📄 PDF Version** — Printable PDF with letterhead, bank info
 
-#### Bank Remittance Info
+### Bank Remittance (Bottom of Bill)
 
-Bill ၏ အောက်တွင် ငွေလွှဲရမည့် Bank Info ပြသသည်:
-- Account No: **840-096-0029-001674-501**
-- Account Name: **Mahar Unity (Thailand) Company Limited**
-- Bank: **Bangkok Bank**
-- SWIFT: **BKKBTHBK**
-
-### Monthly Billing — Workflow
-
-```
-Client & Month ရွေး → Generate နှိပ် → Bill (Draft) ဖန်တီး
-        ↓
-   Extra Fees ဖြည့် (Shift/PDE/VISA/Gear)
-        ↓
-   [Send] နှိပ် → Bill Status: Sent → Client ထံ ပေးပို့
-        ↓
-   Client မှ ငွေလွှဲ → Reconciliation page သို့ ...
-```
+Default values (editable in Draft):
+- Account No: `840-096-0029-001674-501`
+- Account Name: `Mahar Unity (Thailand) Company Limited`
+- Bank: `Bangkok Bank`
+- SWIFT: `BKKBTHBK`
+- Remark: "Manning fee calculated upon 30 days, no overlap"
 
 ---
 
-## 6. Menu 4 — Reconciliation
+## 7. Menu 4 — Reconciliation
 
-**Tab ID:** `reconcile`  
-**ရည်ရွယ်ချက်:** Client မှ ငွေလွှဲပြီးလာသည့်အခါ Invoice နှင့် တိုက်ဆိုင်စစ်ဆေးရန်
+**Tab ID:** `reconcile`
 
-### Record Payment Section
+### လုပ်ဆောင်ချက်
 
-```
-[Bill: Select ▼]  [Amount: ...]  [Ref: ...]  [Date: ...]  [Reconcile]
-```
+Client ဆီကရတဲ့ ငွေလွှဲ slip ကို OCR ဖြင့် validate လုပ်ပြီး Bill နဲ့ matching စစ်ဆေးခြင်း — match ဖြစ်ရင် auto-generate payroll records (Pending status).
 
-**Field များ:**
-
-| Field | အဓိပ္ပါယ် |
-|-------|----------|
-| **Bill** | Reconcile မည့် Bill ID ရွေး (Status: Sent သော Bills သာ ပေါ်သည်) |
-| **Amount** | Client မှ လွှဲပေးသော ငွေပမာဏ (USD) |
-| **Ref** | Bank Reference Number (Transaction Reference) |
-| **Date** | ငွေလက်ခံသည့် ရက်စွဲ |
-
-**Reconcile နှိပ်လျှင်:**
+### Workflow
 
 ```
-Client ပေးသော ပမာဏ vs Bill ၏ Total ကို နှိုင်းယှဉ်
-         ↓
-  ကွာဟချက် < $0.01    →  ✅ MATCH → Bill Status "Paid" ဖြစ်
-  ကွာဟချက် >= $0.01   →  ⚠️ MISMATCH → Bill ကောင်ပြုတ်မဖြစ်
+1. Select Bill         → Sent status bill ရွေး
+2. Upload Bank Slip    → Image upload → OCR scan
+                          ✅ Match    → Amount auto-fill
+                          ❌ Mismatch → Manual entry
+3. Enter Ref + Date
+4. [Reconcile & Generate Payroll]
 ```
 
-**Result Display:**
-- **MATCH** (အစိမ်း) — "Matches BILL-001. PAID." ပြသ
-- **MISMATCH** (လိမ္မော်) — "Mismatch on BILL-001. Difference: $XX" ပြသ
+### OCR Validation
+
+- Tesseract.js ကို browser ထဲမှာ run လုပ်သည်
+- Bank slip image ထဲက number အားလုံးကို scan
+- Bill total (USD) နဲ့ exact match ရှိရင် ✅
+- Match မရှိရင် largest number ကို warning ဖြင့် ပြ
+
+### Matching Logic
+
+```
+Diff = ClientPaid − BillTotal
+|Diff| < $0.01    → ✅ MATCH    → Bill: Paid + Generate payroll records
+|Diff| >= $0.01   → ⚠️ MISMATCH → Hold for manual review
+```
+
+### Payroll Auto-Generation (on Match)
+
+`genPayrollFromBill(bill, slipUrl)` — Bill ထဲက crew တစ်ဦးချင်းအတွက်:
+
+- New `crewPayments` doc create လုပ်သည် (status = `Pending`)
+- All bill fields copy: salary, ownerPaid, actualHA, manning, leavePay, depFeeDed, etc.
+- Identity preserved: slipId (= bill.id), crewId, vessel, client, month
+- → User is sent to **Payment Distribution Hub** for next steps
 
 ### Payment History Table
 
-Reconcile ပြီးသော payments များ list ပြသသည်:
+| Column | Description |
+|--------|-------------|
+| ID | PAY-001, PAY-002... |
+| Bill | Linked bill ID |
+| Client | Bill client |
+| Amount | Received USD |
+| Ref | Bank reference |
+| Date | Receipt date |
+| Status | Matched / Mismatch |
+| Slip | View slip image |
 
-| Column | အဓိပ္ပါယ် |
-|--------|----------|
-| **ID** | Payment ID (PAY-001, PAY-002...) |
-| **Bill** | ဆိုင်သော Bill ID |
-| **Client** | Client နာမည် |
-| **Amount** | ငွေပမာဏ |
-| **Ref** | Bank Reference |
-| **Date** | ရက်စွဲ |
-| **Status** | Matched / Mismatch Badge |
+---
 
-### Reconciliation — Workflow
+## 8. Menu 5 — Payment Distribution Hub
+
+**Tab ID:** `dist`
+
+5-tab workflow ဖြင့် payroll lifecycle ကို စီမံ — Edit → Approve → Distribute → Verify → Paid
 
 ```
-Client မှ ငွေလွှဲ (Bank Transfer)
-        ↓
-Reconcile Page ဖွင့် → Bill ရွေး → Amount ဖြည့် → Ref & Date ဖြည့်
-        ↓
-   [Reconcile] နှိပ်
-        ↓
-   MATCH    → PAY-00X ဖန်တီး → Bill Status "Paid" → Slip Upload သို့ ...
-   MISMATCH → PAY-00X ဖန်တီး (မတိုက်ကိုက်) → Client ကို အကြောင်းကြား
+┌─────────┬───────────┬──────────────┬──────────────┬──────────────┐
+│ Edit &  │   Admin   │ Distribution │ Verification │     Paid     │
+│ Submit  │ Approval  │              │              │   History    │
+└─────────┴───────────┴──────────────┴──────────────┴──────────────┘
+   ↓          ↓             ↓              ↓
+Pending → ReadyForApproval → Approved → Processed → Paid
+```
+
+### Tab 1 — ✏️ Edit & Submit (Accountant)
+
+**Pending records** ကို edit လုပ်ရန် (auto-generated from Reconciliation).
+
+**Edit Modal** ပါတဲ့ section ၃ ခု:
+
+**A. Earnings (Crew Receives)** — editable
+- Basic Salary (registry မှ default)
+- Bonus, PDE Fees, Visa Fees, Working Gear, Leave Pay (Refunded)
+
+**B. Deductions** — editable
+- DEP Fees / Month, Paid DEP Fees, Balance DEP Fees, DEP Fee Deducted, Leave Pay
+
+**C. Adjust for Actual Payment**
+- Actual Gross Amount (USD), Bank Charge, Other Deductions, Extra Bonus
+
+**Final Net Pay Preview** — real-time calculation:
+```
+Net = Gross + Bonus − BankCharge − OtherDed
+```
+
+**Submit:** `[✓ Submit for Admin Approval]` → status: `ReadyForApproval`
+
+### Tab 2 — Admin Approval
+
+**ReadyForApproval** records ကို Admin က review/approve လုပ်ရန်။
+
+Table columns: Crew, Vessel, Gross, Bank Chg, Ded., Bonus, Net Total, Bank, Remark
+
+**Action:** `[Approve]` (Admin only) → status: `Approved`
+
+### Tab 3 — Distribution
+
+**Approved** records ကို print/process လုပ်ရန်။
+
+Per-row actions:
+- **🖨️ Slip** — Generate full payslip PDF (full salary breakdown + MMK conversion)
+- **✂️ Split** — Single payment ကို multiple bank accounts ထဲ chain split
+- **Process Done** → status: `Processed`
+
+**Split Payment Modal:**
+- Crew ၏ registered banks ကို auto-load
+- USD amount ကို account တစ်ခုချင်း ခွဲ assign
+- Total verification (remaining = 0 ဖြစ်မှ confirm နိုင်)
+- Each split → separate `crewPayments` doc with `-S1`, `-S2` suffix
+
+### Tab 4 — Verification (Signed Slip Upload)
+
+**Processed** records ကို signed slip ဖြင့် verify လုပ်ရန်။
+
+Per-row UI:
+- **Slip column** — `👁️ View Slip` link + `✓ Uploaded` badge (or `⚠ Missing`)
+- **Action column:**
+  - Slip မရှိရင်: **📎 Upload Slip** (file picker, image/PDF)
+  - Slip ရှိပြီးရင်: **🔄 Replace** + (Admin: **✓ Mark Paid**)
+  - Non-admin: "Waiting for admin"
+
+**Upload location:** Firebase Storage `signedSlips/{paymentId}_{timestamp}_{filename}`
+
+**Mark Paid (Admin only):**
+- status → `Paid`
+- Crew registry update:
+  - `paidDepFees += depFeeDed`
+  - `balanceDepFees -= depFeeDed`
+  - `accumulatedLeavePay += actLeavePay`
+
+### Tab 5 — Paid History
+
+Selected month ၏ Paid records list — Crew Name, Amount, Paid Date.
+
+### Bonus Features
+
+**Manual Payment** — Top right `[➕ Manual Payment]`:
+- Bill ကို သွားစရာမလို — emergency leave pay လို ad-hoc payment
+- slipId = "AD-HOC", status = Pending → flows through normal workflow
+
+### Payroll Reporting Section (Below tabs)
+
+Bill group cards bills.id ဖြင့် group လုပ်ထား:
+- **Header:** Client name, month, bill ID, vessel, `submitted/total` count
+- **Crew Avatar Dots** — bill ထဲက crew တစ်ဦးချင်း 22px circle
+  - Paid 🟢 | Approved/Processed 🔵 | Submitted 🔵 | Pending ⬜ (dashed)
+  - Hover tooltip: name + status
+- **Submitted crew chips** — name, rank, USD amount, status label
+- **Pending crew chips** — dashed border, dim, "Pending" label
+- **✓ Complete badge** — အားလုံး submit ပြီးရင် show
+- **[View Report]** → opens detailed Payroll Report Modal
+
+### Payroll Report Modal (Per-Crew Breakdown)
+
+**Header:** Exchange Rate input + Bill info + Export buttons
+
+**Per-Crew Card** (3-column):
+
+| EARNINGS | DEDUCTIONS | NET PAY & MMK |
+|----------|------------|---------------|
+| Basic Salary | DEP Fees/Mo | Gross Amount |
+| Bonus | Paid DEP | − Bank Charge |
+| PDE Fees | Bal DEP | − Other Ded |
+| Visa Fees | DEP Deducted | + Extra Bonus |
+| Working Gear | Leave Pay | **Net USD** |
+| Leave Pay (Ref) | | **MMK Conversion** (editable B.Chg/Ref/Ded) |
+| | | **Total MMK** |
+
+**Grand Total Footer:** USD + MMK across all crew
+
+**Export Buttons:**
+- 📄 PDF Summary (full payroll table)
+- 📄 Bank PDF (bank transfer instruction list, MMK)
+- 📄 Cash PDF (cash pickup signature list)
+
+---
+
+## 9. Menu 6 — Status Board
+
+**Tab ID:** `board`
+
+### လုပ်ဆောင်ချက်
+
+Selected salary month အတွက် crew တစ်ဦးချင်း payment status ကို color-coded view ဖြင့် ကြည့်ရှုခြင်း။
+
+### Layout
+
+**1. Month Selector** — `‹ 2026-04 ▼ ›`
+
+**2. Status Cards (3)**
+
+| Card | အဓိပ္ပါယ် | Color |
+|------|----------|-------|
+| **Paid** | CPAY status = Paid | 🟢 Green |
+| **Slip Rcv** | Bank slip uploaded | 🟣 Purple |
+| **Pending** | No payment yet | 🟡 Yellow |
+
+**3. Filter Bar** — Search/Vessel/Client
+
+**4. Crew Table** — Each row colored by status (left border accent)
+
+| No | ID | Name | Rank | Vessel | Client | Wages/M | Status |
+
+---
+
+## 10. Menu 7 — User Management
+
+**Tab ID:** `users` (Admin only)
+
+### လုပ်ဆောင်ချက်
+
+User accounts ကို create, deactivate, role assign လုပ်ရန် (Admin သာ access ရ).
+
+User fields:
+- displayName, email, role (admin/accountant), active (true/false)
+
+---
+
+## 11. Business Logic — Salary, DEP Fees, Leave Pay
+
+### A. OwnerPaid vs Salary
+
+```
+ownerPaid (Owner → MU)  =  salary (Crew receives)  +  manningFees (MU commission)
+```
+
+- **OwnerPaid** = Owner က MU ကို ပေးတဲ့ total (salary + manning bundled)
+- **Salary** = Crew ၏ actual contract salary (payslip မှာ ဒါကို base ယူ)
+- **Manning Fee** = MU ၏ commission, owner side မှာ ဖြတ်ပြီး crew payslip မှာ မပြ
+
+### B. DEP Fees (Departure Fees)
+
+One-time fee crew က MU ကို သင်္ဘောမတက်ခင် ပေးရတဲ့ fee:
+
+```
+ဥပမာ — DEP Fees = $600
+Crew က $300 ပေးခဲ့ (paidDepFees = 300, balanceDepFees = 300)
+       ↓
+ပထမလ payroll တွင် depFeeDed = 300 (or partial if requested)
+       ↓
+Mark Paid လုပ်ရင် auto-update:
+  paidDepFees    += 300  → 600
+  balanceDepFees -= 300  → 0
+```
+
+**Multi-month split:** Crew က request လုပ်ရင် 1/2/3 လ ခွဲ ဖြတ်နိုင်သည် (depFeeDed ကို manually adjust လုပ်)
+
+### C. Leave Pay
+
+```
+Officer (master|chief|officer|engineer|cadet)  →  5% of salary/month
+Rating (other ranks)                            → 10% of salary/month
+
+actLeavePay = (salary × rate) × DOB/DIM
+```
+
+**Accumulation:** Mark Paid လုပ်တိုင်း `accumulatedLeavePay += actLeavePay` → Crew sign-off လုပ်တဲ့အခါ ပြန်ပေး
+
+### D. Bank Charges
+
+```
+Bank Charge (USD) = 5 USD       (default)
+                  = 0 USD       (if salary < $200, exempted)
+Bank Charge (MMK) = 200 MMK     (always, fixed)
+
+Net MMK = (Net USD − BankChargeUSD) × ExchangeRate − 200
+```
+
+### E. Pro-Rata Calculation
+
+```
+joinDate က လအတွင်း ဖြစ်ရင်:
+  Days on Board = monthEnd − joinDate.day + 1
+joinDate က လနောက်ပိုင်း ဖြစ်ရင်:
+  Days on Board = 0 (skip — bill ထဲ မပါ)
+ပုံမှန် ဖြစ်ရင်:
+  Days on Board = Days in Month (full month)
+
+Actual HA / Manning / LeavePay = (Full Amount) × DOB/DIM
 ```
 
 ---
 
-## 7. Menu 5 — Slip Upload
-
-**Tab ID:** `slip`  
-**ရည်ရွယ်ချက်:** ငွေ Reconcile ပြီးသော Payment ကို ထုတ်ပေးမည့် Crew List နှင့် ချိတ်ဆက်မှတ်တမ်းတင်ရန်
-
-> **သဘောတရား:** ဘဏ်မှ ငွေ Matched ဖြစ်ပြီးနောက် — မည်သည့် Crew တွေကို ငွေထုတ်ပေးမည်ဆိုတာ ချမှတ်ရသည်
-
-### Upload Salary Slip Section
+## 12. End-to-End Workflow
 
 ```
-Payment: [Select ▼]          ← Matched Payment များသာ ပေါ်သည်
-         ↓ (ရွေးပြီး)
-[All] [Clear]                ← Crew အားလုံး/ကြဖြုတ်ရန်
+╔═══════════════════════════════════════════════════════════════════╗
+║          MAHAR UNITY SRPS — Complete Lifecycle (Apr 2026)        ║
+╚═══════════════════════════════════════════════════════════════════╝
 
-[ ] Crew Name 1  3E  · MT.VESSEL
-[ ] Crew Name 2  OS  · MT.VESSEL
-[✓] Crew Name 3  AB  · MT.VESSEL
+[1] Crew Setup (Crew Registry)
+    └─ Add crew with salary, DEP fees, manning fees, bank accounts
 
-[Upload (2 crew)]
-```
+[2] Monthly Billing
+    └─ Select Client + Month → Generate Bill (Draft)
+    └─ Edit POB, bonus, PDE, visa, working gear, depFeeDed
+    └─ [Send] → Status: Sent → Email PDF to Client
 
-**လုပ်ဆောင်ပုံ:**
+[3] Client Wires Money to Bangkok Bank
 
-1. **Payment** dropdown မှ ငွေ Matched Payment ကို ရွေးသည်
-2. အဆိုပါ Payment ၏ Client ၏ Crew List ပေါ်လာသည်
-3. **Checkbox** ဖြင့် Crew တစ်ဦးချင်း ရွေးချယ်သည် (သို့) **"All"** နှိပ်သည်
-4. **"Upload (N crew)"** နှိပ်သည် → SLIP-00X ဖန်တီးသည်
+[4] Reconciliation
+    └─ Select Bill → Upload bank slip → OCR validates amount
+    └─ [Reconcile & Generate Payroll]
+        ↓ MATCH
+    └─ Bill: Paid + crewPayments docs created (Pending)
+        ↓ MISMATCH
+    └─ Manual review with Client
 
-### Slip History
+[5] Payment Distribution Hub — 5-stage workflow
 
-Upload ပြီးသော Slips များ list ပြသ:
-- Slip ID, Payment ID, Client, Date
-- Crew Names (tag/badge များဖြင့်)
+    Stage 1 — Edit & Submit (Accountant)
+       └─ Edit each Pending record → adjust earnings/deductions
+       └─ [Submit] → status: ReadyForApproval
 
-### Slip Upload — Workflow
+    Stage 2 — Admin Approval (Admin only)
+       └─ Review submitted records
+       └─ [Approve] → status: Approved
 
-```
-Reconciled (Matched) Payment ရွေး
-        ↓
-Crew List ပေါ်  → Checkbox ဖြင့် ရွေး
-        ↓
-[Upload] နှိပ် → SLIP-00X ဖန်တီး
-        ↓
-Payment Distribution သို့ ...
-```
+    Stage 3 — Distribution
+       └─ [🖨️ Slip] — Print payslip with MMK conversion
+       └─ [✂️ Split] — Distribute across multiple banks (optional)
+       └─ [Process Done] → status: Processed
 
----
+    Stage 4 — Verification (Signed Slip Upload)
+       └─ [📎 Upload Slip] — Upload signed payment proof to Storage
+       └─ Admin: [✓ Mark Paid] → status: Paid
+       └─ AUTO: paidDepFees↑, balanceDepFees↓, accumulatedLeavePay↑
 
-## 8. Menu 6 — Payment Distribution
+    Stage 5 — Paid History
+       └─ Selected month ၏ paid records review
 
-**Tab ID:** `dist`  
-**ရည်ရွယ်ချက်:** Slip မှ Crew တစ်ဦးချင်းကို ငွေထုတ်ပေးမှတ်တမ်းတင်ရန်
-
-### Pending Slips
-
-```
-SLIP-001 · CHH/CATHY · 15 pending    [Process]
-SLIP-002 · EGSS · 8 pending          [Process]
-```
-
-**Process နှိပ်လျှင်:**
-
-System မှ ထိုကြှ Slip ၏ Crew တစ်ဦးချင်းကို:
-```
-CPAY-00X ဖန်တီး:
-  - Crew ID, Name
-  - Slip ID
-  - Total = Crew ၏ OwnerPaid
-  - Type = Bank (Allotment type)
-  - Status = Paid
-  - Date = ယနေ့ ရက်စွဲ
-```
-
-### Crew Payments Table
-
-| Column | အဓိပ္ပါယ် |
-|--------|----------|
-| **ID** | CPAY-001, CPAY-002... |
-| **Crew** | Crew နာမည် |
-| **Slip** | ဆိုင်သော Slip ID |
-| **Total** | ထုတ်ပေးသော ငွေပမာဏ |
-| **Type** | Bank / Cash |
-| **Status** | Paid (Badge) |
-| **Date** | ထုတ်ပေးသည့် ရက်စွဲ |
-
-### Payment Distribution — Workflow
-
-```
-Pending Slips list ကြည့် → [Process] နှိပ်
-        ↓
-Crew တစ်ဦးချင်းကို CPAY-00X Record ဖန်တီး
-        ↓
-Status Board တွင် Crew Status "Paid" ဖြစ်သွား
-        ↓
-Dashboard ၏ "Paid" count တိုးသွား
+[6] Status Board
+    └─ Per-crew payment status dashboard
 ```
 
 ---
 
-## 9. Menu 7 — Status Board
+## 13. Data Schema
 
-**Tab ID:** `board`  
-**ရည်ရွယ်ချက်:** Crew အားလုံး၏ ငွေပေးချေမှု အခြေအနေကို တစ်နေရာတည်း ကြည့်ရှုရန်
+### `crew` collection
 
-### Status Summary Cards
+| Field | Type | Description |
+|-------|------|-------------|
+| id, no | string, number | Unique ID, sequential |
+| name, rank | string | Identity |
+| vessel, client | string | Assignment |
+| joinDate | date string | Sign-on date |
+| **ownerPaid** | USD | Owner pays (salary + manning) |
+| **salary** | USD | Crew's actual salary |
+| office | USD | DEP fees / month |
+| manningFees | USD | MU commission |
+| leavePay | USD | Leave pay / month |
+| paidDepFees | USD | Already paid DEP |
+| balanceDepFees | USD | Remaining DEP |
+| accumulatedLeavePay | USD | Total accrued (auto) |
+| banks | array | `[{bankName, bankAccNo, bankAccName, label}]` |
+| bankName, bankAccNo, bankAccName | string | Primary bank (synced from banks[0]) |
+| allotmentType | string | `bank` / `cash` |
+| status | string | `Onboard` / etc. |
+| remark | string | Notes |
 
-```
-┌─────────┐  ┌──────────┐  ┌─────────┐
-│   45    │  │    23    │  │   77    │
-│  Paid   │  │ Slip Rcv │  │ Pending │
-└─────────┘  └──────────┘  └─────────┘
-```
+### `bills` collection
 
-| Status | အဓိပ္ပါယ် | ရောင် |
-|--------|----------|-------|
-| **Paid** | CPAY record ဖန်တီးပြီး | 🟢 အစိမ်း |
-| **Slip Received** | Slip Upload ပြီး၊ မထုတ်သေး | 🟣 ခရမ်း |
-| **Pending** | မည်သည့် Step မှ မရောက်သေး | 🟡 လိမ္မော်/ဝါ |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | BILL-001 |
+| client, vessel, month | string | Identity |
+| from, to | string | "1.APR.2026" — "30.APR.2026" |
+| status | string | Draft / Sent / Paid |
+| crew | array | Bill rows (full breakdown per crew) |
+| totalHA, total | USD | Hire amount sum, owner total sum |
+| date | date | Generation date |
+| bankInfo | object | `{accNo, accName, bankName, swift, remark}` |
 
-### Filter Bar
+### `payments` collection
 
-Crew Registry ကဲ့သို့ Filter ပါသည်:
-- Search by Name/ID
-- Filter by Vessel
-- Filter by Client
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | PAY-001 |
+| billId, client | string | Linked bill |
+| amount | USD | Received |
+| ref | string | Bank reference |
+| date | date | Receipt date |
+| match | boolean | true if matched |
+| diff | USD | Difference |
+| slipUrl | string | Storage URL |
 
-### Status Board Table
+### `crewPayments` collection
 
-| Column | ဖော်ပြသည် |
-|--------|----------|
-| No / ID / Name / Rank | Crew အချက်အလက် |
-| Vessel / Client | သင်္ဘောနှင့် ဖောက်သည် |
-| **Paid** | OwnerPaid ပမာဏ |
-| **Status** | Paid / Slip Received / Pending Badge |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | P{timestamp}-{rand} |
+| **slipId** | string | Bill ID (or "AD-HOC" for manual) |
+| crewId, crewName, rank | identity | |
+| vessel, client, month, joinDate | context | |
+| billFrom, billTo | string | Service period |
+| daysOnBoard, daysOfMonth | number | Pro-rata data |
+| **Earnings:** ownerPaid, actualHA, pob, bonus, pdeFees, visaFees, workingGear | USD | |
+| totalPayment | USD | Owner total |
+| **Deductions:** actManning, actLeavePay, depFeeDed | USD | |
+| leavePayRefunded | USD | Special refund (sign-off) |
+| **Registry data:** salary, leavePay, office, paidDepFees, balanceDepFees, accumulatedLeavePay | USD | Snapshot |
+| **Net:** netCrewPay, total, grossTotal | USD | |
+| bankCharge, otherDed, extraBonus | USD | Adjustments |
+| remark | string | Note |
+| **Bank:** type, bankName, bankAccNo, bankAccName | | |
+| isSplit | boolean | Split payment marker |
+| label | string | Split label (Primary, Additional) |
+| **Status:** `Pending` → `ReadyForApproval` → `Approved` → `Processed` → `Paid` | string | |
+| signedSlipUrl | string | Storage URL of signed slip |
+| date, createdAt, submittedAt, approvedAt, processedAt, paidAt | timestamp | Audit trail |
 
-> **Note:** Table row တစ်ကြောင်းချင်း တွင် Status အလိုက် **side bar color** ပြောင်းသည် (အစိမ်း/ခရမ်း/လိမ္မော်)
+### `payrollSettings` collection
 
----
+| Field | Type | Description |
+|-------|------|-------------|
+| id (= bill.id) | string | Per-bill settings |
+| rate | number | MMK exchange rate |
+| extraSettings | object | Per-crew adjustments (bc, ref, ded) |
+| finalizedAt | timestamp | Save timestamp |
 
-## 10. App ၏ ငွေကြေး Workflow (End-to-End)
+### `users` collection
 
-App ၏ လိုင်ဖ်စိုင်ကယ် workflow ကို အောက်တွင် ဖော်ပြသည်:
-
-```
-╔══════════════════════════════════════════════════════════╗
-║              MAHAR UNITY SRPS — Full Workflow            ║
-╚══════════════════════════════════════════════════════════╝
-
-STEP 1: Crew Setup
-──────────────────
-Crew Registry တွင် Crew Data ထည့်သွင်း
-  ↓
-  OwnerPaid | Salary | Office | Manning | Vessel | Client
-  ↓
-
-STEP 2: Monthly Billing  
-────────────────────────
-Client + Month ရွေး → Generate Bill (Auto Calculate HA)
-  ↓
-Bill Status: DRAFT
-  ↓
-Extra Fees (Shift/PDE/VISA/Gear) ဖြည့် (optional)
-  ↓
-[Send] → Bill Status: SENT → Client ထံ Invoice ပေးပို့
-
-STEP 3: Client ငွေလွှဲ
-───────────────────────
-Client မှ Bangkok Bank (BKKBTHBK) ထံ ငွေလွှဲ
-
-STEP 4: Reconciliation
-───────────────────────
-Reconcile Page → Bill ရွေး → Amount + Ref + Date ဖြည့်
-  ↓
-  MATCH?
-  ↓ Yes                         ↓ No
-PAY-00X ဖန်တီး              PAY-00X ဖန်တီး (Mismatch)
-Bill → PAID                  Client ကို ကြောင်းကြား
-
-STEP 5: Slip Upload
-───────────────────
-Matched Payment ရွေး → Crew List မှ ရွေး
-  ↓
-SLIP-00X ဖန်တီး
-  ↓
-Crew Status → "Slip Received"
-
-STEP 6: Payment Distribution
-────────────────────────────
-Slip ကို Process → Crew တစ်ဦးချင်း CPAY-00X ဖန်တီး
-  ↓
-Crew Status → "PAID" ✅
-
-STEP 7: Status Board
-─────────────────────
-ကြည့်ရှုရန်: Paid / Slip Received / Pending count
-         + Crew တစ်ဦးချင်း status
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| uid (doc id) | string | Firebase Auth UID |
+| email, displayName | string | Identity |
+| role | string | `admin` / `accountant` |
+| active | boolean | Login allowed |
+| createdAt | timestamp | |
 
 ---
 
-## 11. Data Fields အသေးစိတ်
+## 14. Firestore & Security
 
-### Crew Record
+### Real-time Listeners
 
-| Field | Type | အဓိပ္ပါယ် | ဥပမာ |
-|-------|------|----------|------|
-| `id` | String | Unique ID | C001 |
-| `no` | Number | Serial No | 1 |
-| `name` | String | Crew နာမည် | MYO OO |
-| `rank` | String | ရာထူး | 3E, 2O, AB, OS |
-| `ownerPaid` | USD | Ship Owner → MU ပေးသောငွေ | 3800 |
-| `salary` | USD | Crew ၏ Net Salary | 3700 |
-| `office` | USD | Office/Document Fee | 400 |
-| `manningFees` | USD | Manning Fee | 100 |
-| `vessel` | String | သင်္ဘောနာမည် | MT. ES RIGHT |
-| `client` | String | Broker/Client | CHH / CATHY |
-| `joinDate` | Date | Join Date | 2025-03-19 |
-| `remark` | String | မှတ်ချက် | VIP Agent |
-| `status` | String | Onboard / Off | Onboard |
+App startup တွင် `fsListenCol()` ဖြင့် 5 collections ကို real-time subscribe လုပ်သည်:
+- crew, bills, payments, slips, crewPayments
 
-### Bill Record
+တစ်ယောက်ယောက်က Firestore မှာ data update လုပ်တာနဲ့ UI က instantly refresh ဖြစ်သည်။
 
-| Field | Type | အဓိပ္ပါယ် |
-|-------|------|----------|
-| `id` | String | BILL-001, BILL-002 |
-| `client` | String | Client နာမည် |
-| `month` | String | 2026-04 |
-| `from` / `to` | String | 1.APR.2026 — 30.APR.2026 |
-| `status` | String | Draft / Sent / Paid |
-| `total` | USD | Bill စုစုပေါင်း |
-| `crew` | Array | Crew breakdown list |
-| `bankInfo` | Object | Remittance bank details |
+### Security Rules Summary
 
-### Payment Record
+| Collection | Read | Create | Update | Delete |
+|------------|------|--------|--------|--------|
+| users | Self / Admin | Admin (or first-setup) | Admin | Admin |
+| crew, bills, payments, slips | Active user | Active user | Active user | **Admin only** |
+| **crewPayments** | Active user | Active user | Active user (cannot self-promote to Approved/Paid) — Admin can | **Admin only** |
+| payrollSettings | Active user | Active user | Active user | — |
 
-| Field | Type | အဓိပ္ပါယ် |
-|-------|------|----------|
-| `id` | String | PAY-001 |
-| `billId` | String | ဆိုင်သော Bill ID |
-| `amount` | USD | ငွေထည့်ငွေ |
-| `ref` | String | Bank Reference |
-| `match` | Boolean | true = Matched |
-| `diff` | USD | ကွာဟချက် |
+**Key restriction:** Accountant cannot change `crewPayments` status to `Approved` or `Paid` — only Admin can.
 
-### Slip Record
-
-| Field | Type | အဓိပ္ပါယ် |
-|-------|------|----------|
-| `id` | String | SLIP-001 |
-| `payId` | String | ဆိုင်သော Payment ID |
-| `client` | String | Client |
-| `crewIds` | Array | ရွေးထားသော Crew IDs |
-
-### Crew Payment Record
-
-| Field | Type | အဓိပ္ပါယ် |
-|-------|------|----------|
-| `id` | String | CPAY-001 |
-| `crewId` | String | Crew ID |
-| `crewName` | String | Crew နာမည် |
-| `slipId` | String | ဆိုင်သော Slip ID |
-| `total` | USD | ထုတ်ပေးသော ပမာဏ |
-| `type` | String | bank / cash |
-| `status` | String | Paid |
-
----
-
-## 12. Firestore Database ဆက်သွယ်မှု
-
-App သည် **Firebase Firestore** Cloud Database ကို အသုံးပြုသည်။
-
-### Collections
+### Firebase Storage Paths
 
 ```
-Firestore
-├── crew/           (Crew records)
-│   └── C001: { name, rank, vessel, ... }
-├── bills/          (Invoice records)
-│   └── BILL-001: { client, month, crew[], ... }
-├── payments/       (Reconciliation records)
-│   └── PAY-001: { billId, amount, match, ... }
-├── slips/          (Slip Upload records)
-│   └── SLIP-001: { payId, crewIds[], ... }
-└── crewPayments/   (Distribution records)
-    └── CPAY-001: { crewId, total, status, ... }
+slips/{timestamp}_{filename}              — Bank slips uploaded during Reconciliation
+signedSlips/{paymentId}_{timestamp}_{filename}  — Signed payment slips uploaded during Verification
 ```
 
-### Connection Status
+### Local Setup (env)
 
-| Status | ပြသပုံ | အဓိပ္ပါယ် |
-|--------|--------|----------|
-| ● Firestore Connected | အစိမ်း | Cloud DB နှင့် ချိတ်ဆက်ပြီး၊ saves real-time |
-| ● Local Mode | လိမ္မော် | Browser Memory တွင်သာ သိမ်း (refresh လုပ်ရင် data ပျောက်) |
+`.env` file တွင် Firebase config keys ထည့်ရသည်:
+```
+REACT_APP_FIREBASE_API_KEY=...
+REACT_APP_FIREBASE_AUTH_DOMAIN=...
+REACT_APP_FIREBASE_PROJECT_ID=mu-accounting
+REACT_APP_FIREBASE_STORAGE_BUCKET=...
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=...
+REACT_APP_FIREBASE_APP_ID=...
+```
 
-### Local → Firestore Migration
+### Deploy
 
-**Local Mode** ဖြစ်နေပါက Sidebar ၏ အောက်တွင် **"Migrate to Firestore"** button ပေါ်သည်:
-1. Button နှိပ်သည်
-2. CSV Crew data (145 crew) ကို Firestore "crew" collection သို့ batch upload လုပ်သည်
-3. ပြီးလျှင် "145 crew migrated to Firestore!" toast ပေါ်သည်
-4. Status → "● Firestore Connected" ဖြစ်သွားသည်
+```bash
+npm run build
+firebase deploy
+```
 
----
-
-## 🔄 Quick Reference — Menu Summary
-
-| Menu | Tab ID | အဓိကလုပ်ဆောင်ချက် | Output |
-|------|--------|-------------------|--------|
-| Dashboard | dashboard | Overview stats ကြည့် | — |
-| Crew Registry | crew | Crew Add/Edit | Crew Records |
-| Monthly Billing | billing | Invoice Generate/Send | BILL-XXX |
-| Reconciliation | reconcile | ငွေ Verify | PAY-XXX |
-| Slip Upload | slip | Crew ရွေး Confirm | SLIP-XXX |
-| Payment Dist. | dist | Crew ငွေ Process | CPAY-XXX |
-| Status Board | board | ငွေပေးချေမှု Status | — |
+App is live at: `https://mu-accounting.web.app`
 
 ---
 
-*Document created: April 2026 | Mahar Unity SRPS Accounting App*
+## 🔄 Quick Reference — Tab Summary
+
+| Tab | ID | Primary Purpose | Output |
+|-----|----|-----------------|--------|
+| Dashboard | dashboard | KPIs + month overview | — |
+| Crew Registry | crew | Crew CRUD + multi-bank | Crew records |
+| Monthly Billing | billing | Generate/send invoices | BILL-XXX |
+| Reconciliation | reconcile | OCR slip + match | PAY-XXX + auto Pending CPAY |
+| Payment Distribution | dist | 5-stage workflow | CPAY-XXX → Paid |
+| Status Board | board | Per-crew status | — |
+| User Management | users | Role assignment (Admin) | User records |
+
+---
+
+## 📌 Status Flow Reference
+
+```
+crewPayments.status:
+  Pending → ReadyForApproval → Approved → Processed → Paid
+  (Edit)    (Submit)            (Approve) (Process)   (Mark Paid)
+   ✏️         ✓                   👍        🖨️          ✅
+```
+
+---
+
+*Last updated: April 2026 — reflects current 5-stage Payment Distribution workflow with file-based signed slip upload, OCR-validated reconciliation, multi-bank split payments, and MMK conversion in payslips.*

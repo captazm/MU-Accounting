@@ -6,6 +6,8 @@ import { onAuthChange, authSignOut, fetchUserProfile, hasAnyUser } from "./servi
 import LoginPage from "./components/LoginPage";
 import UserManagement from "./components/UserManagement";
 
+const escHTML = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[m]));
+const escCSV = (s) => { const str = String(s ?? ""); return /^[=+\-@]/.test(str) ? "'" + str.replace(/"/g, '""') : str.replace(/"/g, '""'); };
 
 const getLH = () => `
   <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #86198f; padding-bottom: 12px; margin-bottom: 20px;">
@@ -27,7 +29,7 @@ const getLH = () => `
 const downloadCSV = (rows, filename) => {
   if (!rows.length) return;
   const keys = Object.keys(rows[0]);
-  const csv = [keys.join(","), ...rows.map(r => keys.map(k => `"${String(r[k] ?? "").replace(/"/g, '""')}"`).join(","))].join("\n");
+  const csv = [keys.join(","), ...rows.map(r => keys.map(k => `"${escCSV(r[k])}"`).join(","))].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -299,7 +301,7 @@ function App() {
     const bankChargeMMK = 200;
     const usedRate = exchRate;
     // Net MMK = (net USD - bankChargeUSD) * rate - bankChargeMMK
-    const netMMK = Math.round((Number(p.total) - bankChargeUSD) * usedRate - bankChargeMMK);
+    const netMMK = Math.max(0, Math.round((Number(p.total) - bankChargeUSD) * usedRate - bankChargeMMK));
     const row = (lbl, val, cls="", note="") =>
       `<tr><td class="lbl">${lbl}${note?`<span class="note">${note}</span>`:''}</td><td class="val ${cls}">${val}</td></tr>`;
     const divider = `<tr><td colspan="2" style="padding:3px 0"><div style="border-top:1px dashed #e5e7eb"></div></td></tr>`;
@@ -1049,7 +1051,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
     const dim = getDIM(y, m);
     const bc = cl.map(c => {
       let dob = dim;
-      if (c.joinDate) { const jd = new Date(c.joinDate); const ms2 = new Date(y,m-1,1); const me = new Date(y,m-1,dim); if (jd > ms2 && jd <= me) dob = dim - jd.getDate() + 1; else if (jd > me) dob = 0; }
+      if (c.joinDate) { const jd = new Date(c.joinDate); const ms2 = new Date(y,m-1,1); const me = new Date(y,m-1,dim); if (jd >= ms2 && jd <= me) dob = dim - jd.getDate() + 1; else if (jd > me) dob = 0; }
       const isOfc = /master|chief|officer|engineer|cadet/i.test(c.rank || "");
       const lpPerc = isOfc ? 0.05 : 0.10;
       const ha = dob === dim ? (c.ownerPaid||0) : Math.round(((c.ownerPaid||0)/dim)*dob*100)/100;
@@ -1061,7 +1063,8 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
       return { ...c, from: fmtD(1,m,y), to: fmtD(dim,m,y), daysOnBoard: dob, daysOfMonth: dim, actualHA: ha, pob:0, bonus:0, pdeFees:0, visaFees:0, workingGear:0, totalPayment: ha, actManning, actLeavePay, depFeeDed, netCrewPay, billRemark: c.remark||"", pobNote: "" };
     }).filter(r => r.daysOnBoard > 0);
     const vName = bc.length > 0 ? (bc.every(c => c.vessel === bc[0].vessel) ? bc[0].vessel : "Multiple Vessels") : "No Vessel";
-    const bill = { id: `BILL-${String(bills.length+1).padStart(3,"0")}`, client: sc, vessel: vName, month: mo, from: fmtD(1,m,y), to: fmtD(dim,m,y), crew: bc, totalHA: Math.round(bc.reduce((s,c)=>s+c.actualHA,0)*100)/100, total: Math.round(bc.reduce((s,c)=>s+c.totalPayment,0)*100)/100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo:"840-096-0029-001674-501", accName:"Mahar Unity (Thailand) Company Limited", bankName:"Bangkok Bank", swift:"BKKBTHBK", remark:"Manning fee calculated upon 30 days, no overlap" } };
+    const nextBillNum = bills.reduce((max, b) => { const n = parseInt((b.id||"").replace("BILL-",""),10); return n > max ? n : max; }, 0) + 1;
+    const bill = { id: `BILL-${String(nextBillNum).padStart(3,"0")}`, client: sc, vessel: vName, month: mo, from: fmtD(1,m,y), to: fmtD(dim,m,y), crew: bc, totalHA: Math.round(bc.reduce((s,c)=>s+c.actualHA,0)*100)/100, total: Math.round(bc.reduce((s,c)=>s+c.totalPayment,0)*100)/100, status: "Draft", date: new Date().toISOString().split("T")[0], bankInfo: { accNo:"840-096-0029-001674-501", accName:"Mahar Unity (Thailand) Company Limited", bankName:"Bangkok Bank", swift:"BKKBTHBK", remark:"Manning fee calculated upon 30 days, no overlap" } };
     setBills([...bills, bill]); if (fsOk) fs.setD("bills", bill.id, bill); showT(`Bill ${bill.id} created for ${sc}`);
   };
   const setSt = async (id, st) => { setBills(bills.map(b => b.id === id ? { ...b, status: st } : b)); if (fsOk) fs.upD("bills", id, { status: st }); showT(`${id} → ${st}`); };
@@ -1094,7 +1097,7 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
         if (String(c.id||c.name) !== ident) return c;
         const isNum = field !== "billRemark";
         const u = { ...c, [field]: isNum ? (Number(val)||0) : val };
-        if (field === "daysOnBoard" || field === "pob" || field === "bonus" || field === "pdeFees" || field === "visaFees" || field === "workingGear") {
+        if (field === "daysOnBoard" || field === "pob" || field === "bonus" || field === "pdeFees" || field === "visaFees" || field === "workingGear" || field === "depFeeDed") {
           if (field === "daysOnBoard") {
             u.actualHA = u.daysOnBoard===u.daysOfMonth?(u.ownerPaid||0):Math.round(((u.ownerPaid||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
             u.actManning = u.daysOnBoard===u.daysOfMonth?(u.manningFees||0):Math.round(((u.manningFees||0)/u.daysOfMonth)*u.daysOnBoard*100)/100;
@@ -1117,14 +1120,14 @@ function BillV({ crew, bills, setBills, showT, clients, fs, fsOk, deleteBill, us
   const exportCSV = (b) => {
     const hdr=['Name','Sign On','Wages/M','From','To','Days Board','Days/M','Actual HA','POB','Bonus','PDE','VISA','WG','Total','Remark'];
     const rows=(b.crew||[]).map(c=>[c.name,c.joinDate||'',c.ownerPaid||0,c.from,c.to,c.daysOnBoard,c.daysOfMonth,(c.actualHA||0).toFixed(2),c.pob||0,c.bonus||0,c.pdeFees||0,c.visaFees||0,c.workingGear||0,(c.totalPayment||0).toFixed(2),c.billRemark||'']);
-    const csv=[hdr,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csv=[hdr,...rows].map(r=>r.map(v=>`"${escCSV(v)}"`).join(',')).join('\n');
     const blob=new Blob(["\uFEFF"+csv],{type:'text/csv;charset=utf-8'});
     const url=URL.createObjectURL(blob); const link=document.createElement("a"); link.href=url;
     const safeName=`${b.id}-${b.client}-${b.month}`.replace(/[^a-zA-Z0-9\- \u1000-\u109F]/g,'_');
     link.download=`${safeName}.csv`; document.body.appendChild(link); link.click();
     setTimeout(()=>{document.body.removeChild(link);URL.revokeObjectURL(url);},100);
   };
-  const exportPDF = (b) => { const trs=(b.crew||[]).map((c,i)=>`<tr><td>${i+1}</td><td>${c.name}</td><td>${c.joinDate||''}</td><td>${c.ownerPaid||0}</td><td>${c.from}</td><td>${c.to}</td><td style="color:${c.daysOnBoard<c.daysOfMonth?'#F59E0B':'inherit'}">${c.daysOnBoard}</td><td>${c.daysOfMonth}</td><td>${(c.actualHA||0).toFixed(2)}</td><td style="color:${c.pob>0?'#dc2626':'inherit'}">${c.pob||0}</td><td>${c.bonus||0}</td><td>${c.pdeFees||0}</td><td>${c.visaFees||0}</td><td>${c.workingGear||0}</td><td><b>${(c.totalPayment||0).toFixed(2)}</b></td><td>${c.billRemark||''}</td></tr>`).join(''); const html=`<!DOCTYPE html><html><head><title>${b.id}</title><style>*{font-family:'Inter',sans-serif;font-size:10px}body{margin:30px}h2{font-size:14px;margin-bottom:12px;color:#2563eb;border-bottom:1px solid #eee;padding-bottom:5px}.info{color:#666;margin-bottom:15px;display:flex;justify-content:space-between}table{border-collapse:collapse;width:100%;margin-bottom:20px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f9fafb;text-align:center;font-size:9px;font-weight:700;color:#374151}td{text-align:right}td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}.total td{font-weight:bold;background:#f3f4f6;color:#111827}.bank{margin-top:20px;padding:12px;border:1px solid #e5e7eb;font-size:9.5px;background:#f8fafc;border-radius:6px;line-height:1.6}@media print{body{margin:20px}}</style></head><body>${getLH()}<h2>${b.client} — ${b.month} MONTHLY BILL (${b.id})</h2><div class="info"><span><b>Period:</b> ${b.from} — ${b.to}</span><span><b>Crew:</b> ${(b.crew||[]).length} &nbsp;|&nbsp; <b>Date:</b> ${b.date||''}</span></div><table><thead><tr><th>#</th><th>Name</th><th>Sign On</th><th>Wages/M</th><th>From</th><th>To</th><th>Days Board</th><th>Days/M</th><th>Actual HA</th><th>POB(-)</th><th>Bonus</th><th>PDE</th><th>VISA</th><th>WG</th><th>Total</th><th>Remark</th></tr></thead><tbody>${trs}</tbody><tfoot><tr class="total"><td colspan="14" style="text-align:right">TOTAL USD</td><td>${(b.total||0).toFixed(2)}</td><td></td></tr></tfoot></table><div class="bank"><b>BANK REMITTANCE DETAILS:</b><br/>Account No: ${b.bankInfo?.accNo} | Account Name: ${b.bankInfo?.accName} | Bank: ${b.bankInfo?.bankName} | SWIFT: <b>${b.bankInfo?.swift}</b><br/>REMARK: ${b.bankInfo?.remark||"Manning fee calculated upon 30 days, no overlap"}</div></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); };
+  const exportPDF = (b) => { const trs=(b.crew||[]).map((c,i)=>`<tr><td>${i+1}</td><td>${escHTML(c.name)}</td><td>${escHTML(c.joinDate)}</td><td>${escHTML(c.ownerPaid)}</td><td>${escHTML(c.from)}</td><td>${escHTML(c.to)}</td><td style="color:${c.daysOnBoard<c.daysOfMonth?'#F59E0B':'inherit'}">${escHTML(c.daysOnBoard)}</td><td>${escHTML(c.daysOfMonth)}</td><td>${(c.actualHA||0).toFixed(2)}</td><td style="color:${c.pob>0?'#dc2626':'inherit'}">${escHTML(c.pob||0)}</td><td>${escHTML(c.bonus)}</td><td>${escHTML(c.pdeFees)}</td><td>${escHTML(c.visaFees)}</td><td>${escHTML(c.workingGear)}</td><td><b>${(c.totalPayment||0).toFixed(2)}</b></td><td>${escHTML(c.billRemark)}</td></tr>`).join(''); const html=`<!DOCTYPE html><html><head><title>${escHTML(b.id)}</title><style>*{font-family:'Inter',sans-serif;font-size:10px}body{margin:30px}h2{font-size:14px;margin-bottom:12px;color:#2563eb;border-bottom:1px solid #eee;padding-bottom:5px}.info{color:#666;margin-bottom:15px;display:flex;justify-content:space-between}table{border-collapse:collapse;width:100%;margin-bottom:20px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f9fafb;text-align:center;font-size:9px;font-weight:700;color:#374151}td{text-align:right}td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}.total td{font-weight:bold;background:#f3f4f6;color:#111827}.bank{margin-top:20px;padding:12px;border:1px solid #e5e7eb;font-size:9.5px;background:#f8fafc;border-radius:6px;line-height:1.6}@media print{body{margin:20px}}</style></head><body>${getLH()}<h2>${escHTML(b.client)} — ${escHTML(b.month)} MONTHLY BILL (${escHTML(b.id)})</h2><div class="info"><span><b>Period:</b> ${escHTML(b.from)} — ${escHTML(b.to)}</span><span><b>Crew:</b> ${(b.crew||[]).length} &nbsp;|&nbsp; <b>Date:</b> ${escHTML(b.date)}</span></div><table><thead><tr><th>#</th><th>Name</th><th>Sign On</th><th>Wages/M</th><th>From</th><th>To</th><th>Days Board</th><th>Days/M</th><th>Actual HA</th><th>POB(-)</th><th>Bonus</th><th>PDE</th><th>VISA</th><th>WG</th><th>Total</th><th>Remark</th></tr></thead><tbody>${trs}</tbody><tfoot><tr class="total"><td colspan="14" style="text-align:right">TOTAL USD</td><td>${(b.total||0).toFixed(2)}</td><td></td></tr></tfoot></table><div class="bank"><b>BANK REMITTANCE DETAILS:</b><br/>Account No: ${escHTML(b.bankInfo?.accNo)} | Account Name: ${escHTML(b.bankInfo?.accName)} | Bank: ${escHTML(b.bankInfo?.bankName)} | SWIFT: <b>${escHTML(b.bankInfo?.swift)}</b><br/>REMARK: ${escHTML(b.bankInfo?.remark||"Manning fee calculated upon 30 days, no overlap")}</div></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); };
   return <div>
     <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14, marginBottom: 14 }}>
       <h4 style={{ margin: "0 0 10px", fontSize: 12.5, fontWeight: 600 }}>Generate Monthly Bill</h4>
@@ -1291,7 +1294,8 @@ function ReconV({ bills, setBills, payments, setPayments, showT, fs, fsOk, genPa
   const rec = async () => {
     const bill = bills.find(b => b.id === pf.billId); if (!bill) return;
     const amt = Number(pf.amount); const diff = amt - bill.total;
-    const pay = { id: `PAY-${String(payments.length+1).padStart(3,"0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff, slipUrl: pf.slipUrl };
+    const nextPayNum = payments.reduce((max, p) => { const n = parseInt((p.id||"").replace("PAY-",""),10); return n > max ? n : max; }, 0) + 1;
+    const pay = { id: `PAY-${String(nextPayNum).padStart(3,"0")}`, billId: bill.id, client: bill.client, amount: amt, ref: pf.ref, date: pf.date, match: Math.abs(diff) < 0.01, diff, slipUrl: pf.slipUrl };
     setPayments([...payments, pay]); if (fsOk) fs.setD("payments", pay.id, pay);
     if (Math.abs(diff) < 0.01) {
       setBills(bills.map(b => b.id === bill.id ? { ...b, status: "Paid" } : b));

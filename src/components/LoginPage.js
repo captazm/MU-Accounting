@@ -173,8 +173,8 @@ export default function LoginPage({ isFirstTime }) {
       <div style={{ background: C.sf, border: `1px solid ${C.bdr}`, borderRadius: 16, padding: "40px 36px", width: "100%", maxWidth: 400, position: "relative", zIndex: 1, boxShadow: "0 25px 80px rgba(0,0,0,0.5)" }}>
         {/* Branding */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: `linear-gradient(135deg,${C.pri},${C.inf})`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: 26, fontWeight: 800, color: "#fff", boxShadow: `0 8px 24px ${C.pri}40` }}>
-            M
+          <div style={{ width: 72, height: 72, borderRadius: "50%", overflow: "hidden", margin: "0 auto 12px", boxShadow: `0 8px 28px ${C.pri}50, 0 0 0 3px ${C.pri}30` }}>
+            <img src="/logo.jpg" alt="Mahar Unity" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
           <div style={{ fontSize: 18, fontWeight: 700, color: C.txt, letterSpacing: "0.5px" }}>MAHAR UNITY</div>
           <div style={{ fontSize: 10, color: C.txD, letterSpacing: "2.5px", marginTop: 3, textTransform: "uppercase" }}>SRPS Accounting System</div>

@@ -48,6 +48,24 @@ function App() {
   const [payments, setPayments] = useState([]);
   const [slips, setSlips] = useState([]);
   const [crewPay, setCrewPay] = useState([]);
+  const [pwaInstallable, setPwaInstallable] = useState(!!window.__pwaInstallPrompt);
+  useEffect(() => {
+    const onInstallable = () => setPwaInstallable(true);
+    const onInstalled   = () => setPwaInstallable(false);
+    window.addEventListener('pwa-installable', onInstallable);
+    window.addEventListener('pwa-installed',   onInstalled);
+    return () => {
+      window.removeEventListener('pwa-installable', onInstallable);
+      window.removeEventListener('pwa-installed',   onInstalled);
+    };
+  }, []);
+
+  const installPWA = async () => {
+    if (!window.__pwaInstallPrompt) return;
+    window.__pwaInstallPrompt.prompt();
+    const { outcome } = await window.__pwaInstallPrompt.userChoice;
+    if (outcome === 'accepted') setPwaInstallable(false);
+  };
   const [expenses, setExpenses] = useState([]);
   const [income,   setIncome]   = useState([]);
   const [portage,  setPortage]  = useState([]);
@@ -830,6 +848,11 @@ function App() {
 
         {/* Footer */}
         <footer style={{ textAlign: "center", padding: "8px 16px", borderTop: `1px solid ${C.bdr}`, background: C.sf, fontSize: 10.5, color: C.txD, flexShrink: 0 }}>
+          {pwaInstallable && (
+            <button onClick={installPWA} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", marginBottom:6, padding:"7px 10px", background:`${C.pri}18`, border:`1px solid ${C.pri}40`, borderRadius:7, color:C.pri, fontSize:11, fontWeight:600, cursor:"pointer" }}>
+              <span style={{fontSize:13}}>⬇️</span>{sb ? "Install App" : ""}
+            </button>
+          )}
           Developed by{" "}
           <span style={{ color: "#f97316", fontWeight: 700 }}>AZM</span>
         </footer>

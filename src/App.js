@@ -50,6 +50,7 @@ function App() {
   const [crewPay, setCrewPay] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [income,   setIncome]   = useState([]);
+  const [portage,  setPortage]  = useState([]);
   const [sb, setSb] = useState(true);
   const [modal, setModal] = useState(null);
   const [fN, setFN] = useState("");
@@ -109,6 +110,7 @@ function App() {
       fsListenCol("crewPayments", (data) => setCrewPay(data)),
       fsListenCol("expenses",     (data) => setExpenses(data)),
       fsListenCol("income",       (data) => setIncome(data)),
+      fsListenCol("portage",      (data) => setPortage(data)),
     ];
     return () => unsubs.forEach(unsub => unsub());
   }, [currentUser]);
@@ -172,14 +174,15 @@ function App() {
   }), [crew, fN, fV, fC]);
 
   const allNav = [
-    { id: "dashboard", label: "Dashboard",       icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.9"/><rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.75"/></svg> },
-    { id: "crew",      label: "Crew Registry",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="7.5" cy="6" r="3" fill="currentColor" opacity="0.9"/><circle cx="13.5" cy="7" r="2.2" fill="currentColor" opacity="0.5"/><path d="M1 16c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.9"/><path d="M13.5 10.5c2.485 0 4.5 1.97 4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5"/></svg> },
-    { id: "billing",   label: "Monthly Billing", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M3 2h11l3 3v13a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="currentColor" opacity="0.12"/><path d="M13 2v4h4" stroke="currentColor" strokeWidth="1.4" opacity="0.5"/><path d="M7 9h6M7 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/></svg> },
-    { id: "reconcile", label: "Reconciliation",  icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.9"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/></svg> },
-    { id: "dist",      label: "Payment Dist.",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><path d="M3 10h14M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><circle cx="5" cy="10" r="2" fill="currentColor" opacity="0.5"/><circle cx="15" cy="6" r="1.5" fill="currentColor" opacity="0.4"/><circle cx="15" cy="14" r="1.5" fill="currentColor" opacity="0.4"/></svg> },
-    { id: "board",     label: "Status Board",    icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="3" width="16" height="2" rx="1" fill="currentColor" opacity="0.4"/><rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor" opacity="0.9"/><rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor" opacity="0.6"/><circle cx="17" cy="10" r="2.5" fill="currentColor" opacity="0.85"/></svg> },
-    { id: "expenses",  label: "Expenses",        icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" opacity="0.7"/><circle cx="6" cy="13" r="1.2" fill="currentColor" opacity="0.9"/><path d="M10 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/></svg> },
-    { id: "users",     label: "User Management", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
+    { id: "dashboard", label: "Dashboard",       color:"#38BDF8", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.9"/><rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.5"/><rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" opacity="0.75"/></svg> },
+    { id: "crew",      label: "Crew Registry",   color:"#34D399", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="7.5" cy="6" r="3" fill="currentColor" opacity="0.9"/><circle cx="13.5" cy="7" r="2.2" fill="currentColor" opacity="0.5"/><path d="M1 16c0-3.314 2.91-6 6.5-6s6.5 2.686 6.5 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.9"/><path d="M13.5 10.5c2.485 0 4.5 1.97 4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.5"/></svg> },
+    { id: "billing",   label: "Monthly Billing", color:"#FBBF24", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M3 2h11l3 3v13a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="currentColor" opacity="0.12"/><path d="M13 2v4h4" stroke="currentColor" strokeWidth="1.4" opacity="0.5"/><path d="M7 9h6M7 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/></svg> },
+    { id: "reconcile", label: "Reconciliation",  color:"#A78BFA", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.9"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/></svg> },
+    { id: "dist",      label: "Payment Dist.",   color:"#10B981", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><path d="M3 10h14M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><circle cx="5" cy="10" r="2" fill="currentColor" opacity="0.5"/><circle cx="15" cy="6" r="1.5" fill="currentColor" opacity="0.4"/><circle cx="15" cy="14" r="1.5" fill="currentColor" opacity="0.4"/></svg> },
+    { id: "board",     label: "Status Board",    color:"#60A5FA", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="3" width="16" height="2" rx="1" fill="currentColor" opacity="0.4"/><rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor" opacity="0.9"/><rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor" opacity="0.6"/><circle cx="17" cy="10" r="2.5" fill="currentColor" opacity="0.85"/></svg> },
+    { id: "portage",   label: "Portage Bill",    color:"#F472B6", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M3 2h11l3 3v13a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" fill="currentColor" opacity="0.1"/><path d="M13 2v4h4" stroke="currentColor" strokeWidth="1.4" opacity="0.5"/><path d="M7 8h6M7 11h6M7 14h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.9"/></svg> },
+    { id: "expenses",  label: "Expenses",        color:"#FB923C", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" opacity="0.7"/><circle cx="6" cy="13" r="1.2" fill="currentColor" opacity="0.9"/><path d="M10 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/></svg> },
+    { id: "users",     label: "User Management", color:"#94A3B8", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
   const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc, getD: fsGetDoc };
@@ -611,7 +614,7 @@ function App() {
                 key={n.id}
                 onClick={() => setTab(n.id)}
                 title={!sb ? n.label : undefined}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `rgba(14,165,233,0.08)`; }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${n.color || "rgba(14,165,233"}18`; }}
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                 style={{
                   display: "flex", alignItems: "center",
@@ -619,11 +622,11 @@ function App() {
                   padding: sb ? "6px 8px" : "7px 0",
                   width: "100%",
                   borderRadius: 9,
-                  border: isActive ? `1px solid rgba(14,165,233,0.22)` : "1px solid transparent",
+                  border: isActive ? `1px solid ${n.color || "rgba(14,165,233,1)"}35` : "1px solid transparent",
                   cursor: "pointer",
                   transition: "all 0.18s",
-                  background: isActive ? `rgba(14,165,233,0.1)` : "transparent",
-                  color: isActive ? C.acc : C.txM,
+                  background: isActive ? `${n.color || "rgba(14,165,233,1)"}18` : "transparent",
+                  color: isActive ? (n.color || C.acc) : C.txM,
                   fontSize: 12,
                   fontWeight: isActive ? 600 : 400,
                   textAlign: "left",
@@ -635,8 +638,8 @@ function App() {
                   <span style={{
                     position: "absolute", left: 0, top: "22%", bottom: "22%",
                     width: 3, borderRadius: "0 3px 3px 0",
-                    background: C.pri,
-                    boxShadow: `0 0 8px ${C.pri}`,
+                    background: n.color || C.pri,
+                    boxShadow: `0 0 8px ${n.color || C.pri}`,
                   }} />
                 )}
                 {/* Glassmorphism icon container */}
@@ -649,18 +652,18 @@ function App() {
                   flexShrink: 0,
                   marginLeft: isActive ? 4 : 2,
                   background: isActive
-                    ? `rgba(14,165,233,0.18)`
+                    ? `${n.color || "rgba(14,165,233,1)"}28`
                     : `rgba(255,255,255,0.05)`,
                   border: isActive
-                    ? `1px solid rgba(14,165,233,0.35)`
+                    ? `1px solid ${n.color || "rgba(14,165,233,1)"}50`
                     : `1px solid rgba(255,255,255,0.08)`,
                   backdropFilter: "blur(4px)",
                   WebkitBackdropFilter: "blur(4px)",
                   transition: "all 0.18s",
                   boxShadow: isActive
-                    ? `0 2px 8px rgba(14,165,233,0.2), inset 0 1px 0 rgba(255,255,255,0.1)`
+                    ? `0 2px 8px ${n.color || "rgba(14,165,233,1)"}40, inset 0 1px 0 rgba(255,255,255,0.1)`
                     : `inset 0 1px 0 rgba(255,255,255,0.06)`,
-                  color: isActive ? C.acc : C.txM,
+                  color: n.color || (isActive ? C.acc : C.txM),
                 }}>
                   {n.icon}
                 </span>
@@ -814,12 +817,13 @@ function App() {
 
         {/* Page content */}
         <div key={tab} style={{ flex: 1, overflow: "auto", padding: 16, animation: "mu-fade-in 0.18s ease" }}>
-          {tab === "dashboard" && <Dash {...p} />}
+          {tab === "dashboard" && <Dash {...p} expenses={expenses} />}
           {tab === "board"     && <BoardV {...p} />}
           {tab === "crew"      && <CrewV {...p} />}
           {tab === "billing"   && <BillV {...p} />}
           {tab === "reconcile" && <ReconV {...p} />}
           {tab === "dist"      && <DistV {...p} onManualPayment={p.createManualPayment} fsUploadFile={fsUploadFile} />}
+          {tab === "portage"   && <PortageV portage={portage} setPortage={setPortage} crew={crew} showT={showT} fs={fs} fsOk={fsOk} userRole={userRole} />}
           {tab === "expenses"  && <ExpensesV bills={bills} crewPay={crewPay} expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} showT={showT} fs={fs} fsOk={fsOk} userRole={userRole} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} />}
           {tab === "users" && userRole === "admin" && <UserManagement currentUser={currentUser} showT={showT} />}
         </div>
@@ -835,7 +839,7 @@ function App() {
 }
 
 // ============== DASHBOARD ==============
-function Dash({ crew, bills, payments, crewPay, slips, setTab, selectedMonth, setSelectedMonth }) {
+function Dash({ crew, bills, payments, crewPay, slips, setTab, selectedMonth, setSelectedMonth, expenses }) {
   const mBills = bills.filter(b => b.month === selectedMonth);
   const mBillIds = new Set(mBills.map(b => b.id));
   const mPayments = payments.filter(p => mBillIds.has(p.billId));
@@ -903,12 +907,75 @@ function Dash({ crew, bills, payments, crewPay, slips, setTab, selectedMonth, se
       </div>
     </div>
     <div style={{ background: C.card, borderRadius: 8, border: `1px solid ${C.bdr}`, padding: 14 }}>
-      <h4 style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: C.txM }}>Top Clients by Owner Paid</h4>
-      {tc.map(([cl, d]) => <div key={cl} style={{ marginBottom: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}><span style={{ fontSize: 11.5 }}>{cl}</span><span style={{ fontSize: 11.5, fontWeight: 600, color: C.acc }}>${d.t.toLocaleString()}</span></div>
-        <div style={{ height: 5, background: C.bg, borderRadius: 3, overflow: "hidden" }}><div style={{ height: "100%", width: `${(d.t / mx) * 100}%`, background: `linear-gradient(90deg,${C.pri},${C.acc})`, borderRadius: 3 }} /></div>
-        <div style={{ fontSize: 9, color: C.txD, marginTop: 1 }}>{d.n} crew</div>
-      </div>)}
+      <h4 style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: C.txM }}>📊 P&L — {new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1])-1, 1).toLocaleString("en",{month:"long",year:"numeric"})}</h4>
+      {(()=>{
+        const pB   = bills.filter(b=>b.status==="Paid"&&b.month===selectedMonth);
+        const mRev = pB.reduce((s,b)=>(b.crew||[]).reduce((ss,c)=>ss+(c.actManning||0),s),0);
+        const dRev = crewPay.filter(cp=>cp.status==="Paid"&&cp.month===selectedMonth).reduce((s,cp)=>s+(cp.depFeeDed||0),0);
+        const aExp = (expenses||[]).filter(e=>e.month===selectedMonth&&e.status==="Approved");
+        const tExp = aExp.reduce((s,e)=>s+(Number(e.amountUSD)||0)+(Number(e.amountMMK)||0)/3985,0);
+        const tRev = mRev+dRev;
+        const net  = tRev-tExp;
+        const fu   = v=>`${(Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+        const needApproval = crewPay.filter(cp=>cp.status==="ReadyForApproval");
+        const needSlip     = crewPay.filter(cp=>cp.status==="Processed"&&!cp.signedSlipUrl);
+        const needExpAppr  = (expenses||[]).filter(e=>e.status==="Pending");
+        const unpaid       = crewPay.filter(cp=>cp.month===selectedMonth&&cp.status!=="Paid");
+        const actions = [
+          needApproval.length && {icon:"🟡",col:C.wrn,text:`${needApproval.length} payroll record${needApproval.length>1?"s":""} awaiting admin approval`,tab:"dist"},
+          needSlip.length     && {icon:"📎",col:C.inf,text:`${needSlip.length} processed payment${needSlip.length>1?"s":""} missing signed slip`,tab:"dist"},
+          needExpAppr.length  && {icon:"💳",col:C.acc,text:`${needExpAppr.length} expense entr${needExpAppr.length>1?"ies":"y"} pending approval`,tab:"expenses"},
+          unpaid.length       && {icon:"⏳",col:C.txM,text:`${unpaid.length} crew not yet paid this month`,tab:"board"},
+        ].filter(Boolean);
+        return (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            {/* P&L Mini */}
+            <div style={{background:C.bg,borderRadius:8,padding:12,border:`1px solid ${C.bdr}`}}>
+              {[["Manning Fees",mRev],["DEP Fees Collected",dRev]].map(([l,v])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:5,paddingBottom:5,borderBottom:`1px solid ${C.bdr}30`}}>
+                  <span style={{color:C.txM}}>{l}</span><span style={{color:C.ok,fontWeight:600}}>{fu(v)}</span>
+                </div>
+              ))}
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,fontWeight:700,marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.bdr}`}}>
+                <span style={{color:C.txt}}>Total Revenue</span><span style={{color:C.ok}}>{fu(tRev)}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:10}}>
+                <span style={{color:C.txM}}>Expenses ({aExp.length} approved)</span>
+                <span style={{color:C.err,fontWeight:600}}>− {fu(tExp)}</span>
+              </div>
+              <div style={{borderTop:`2px solid ${net>=0?C.ok:C.err}`,paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:C.txt}}>Net</span>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:18,fontWeight:800,color:net>=0?C.ok:C.err}}>{net>=0?"+":""}{fu(net)}</div>
+                  <div style={{fontSize:9,color:net>=0?C.ok:C.err}}>{net>=0?"🟢 Profit":"🔴 Loss"}</div>
+                </div>
+              </div>
+              <div style={{marginTop:8,fontSize:9,color:C.pri,textAlign:"right",cursor:"pointer"}} onClick={()=>setTab("expenses")}>Full P&L →</div>
+            </div>
+            {/* Pending Actions */}
+            <div style={{background:C.bg,borderRadius:8,padding:12,border:`1px solid ${C.bdr}`}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.txM,marginBottom:8}}>⚠️ PENDING ACTIONS</div>
+              {actions.length===0
+                ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:100,color:C.ok}}>
+                    <div style={{fontSize:24}}>✅</div>
+                    <div style={{fontSize:11,fontWeight:600,marginTop:6}}>All clear!</div>
+                  </div>
+                : actions.map((a,i)=>(
+                    <div key={i} onClick={()=>setTab(a.tab)}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.card,borderRadius:6,border:`1px solid ${C.bdr}`,cursor:"pointer",marginBottom:6}}
+                      onMouseEnter={e=>e.currentTarget.style.borderColor=a.col}
+                      onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr}>
+                      <span style={{fontSize:14}}>{a.icon}</span>
+                      <span style={{fontSize:10,color:C.txt,flex:1}}>{a.text}</span>
+                      <span style={{fontSize:11,color:a.col,fontWeight:700}}>→</span>
+                    </div>
+                  ))
+              }
+              <div style={{marginTop:8,fontSize:9,color:C.pri,textAlign:"right",cursor:"pointer"}} onClick={()=>setTab("board")}>Status Board →</div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   </div>;
 }
@@ -2249,6 +2316,407 @@ const exportCashPDF = (calc, rate, extra, crew) => {
   w.document.write(`<html><head><title>Cash Pickup List</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;} th{background:#f4f4f4;padding:10px;border:1px solid #ddd;text-align:left;}</style></head><body>${getLH()}<h2 style="text-align:center;margin:10px 0;font-size:16px;">CASH PICKUP LIST</h2><div style="font-size:12px;margin-bottom:15px"><b>Vessel:</b> ${calc.bill.vessel||"—"} | <b>Month:</b> ${calc.bill.month}</div><table><thead><tr><th>Name</th><th>Rank</th><th>Amount (MMK)</th><th>Signature</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:50px;font-size:12px"><div style="margin-top:40px;display:flex;justify-content:space-between"><div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Paid By</div><div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Date</div></div></div></body></html>`);
   w.document.close(); setTimeout(() => w.print(), 500);
 };
+
+// ============================================================
+// PORTAGE BILL MODULE
+// ============================================================
+function PortageV({portage, setPortage, crew, showT, fs, fsOk, userRole}) {
+  const blankForm = () => ({
+    name:"", rank:"", cdc:"", pp:"", vessel:"",
+    departure:"", arrival:"",
+    basicWages:0, leavePay:0, overtime:0,
+    rows:[],
+    createdAt: new Date().toISOString(),
+  });
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm]         = useState(blankForm());
+  const [search, setSearch]     = useState("");
+  const inp = {background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.txt,padding:"6px 9px",fontSize:11.5,outline:"none",width:"100%",boxSizing:"border-box"};
+
+  // ── Helpers ────────────────────────────────────────────────────
+  const fmtDate = d => {
+    if(!d) return "";
+    const dt = new Date(d);
+    return dt.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}).toUpperCase().replace(/ /g,".");
+  };
+  const daysBetween = (from, to) => {
+    if(!from||!to) return 0;
+    const diff = new Date(to)-new Date(from);
+    return Math.max(0, Math.round(diff/86400000)+1);
+  };
+  const daysInMonth = d => {
+    if(!d) return 30;
+    const dt = new Date(d);
+    return new Date(dt.getFullYear(), dt.getMonth()+1, 0).getDate();
+  };
+  const rowTotal = r => (Number(r.basicWages)||0)+(Number(r.leavePay)||0)+(Number(r.overtime)||0);
+  const grandTotal = rows => rows.reduce((s,r)=>s+rowTotal(r),0);
+  const fmt2 = v => (Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  // ── Auto-fill row from header rates ─────────────────────────────────
+  const calcRow = (from, to, bw, lp, ot) => {
+    const days = daysBetween(from, to);
+    const dim  = daysInMonth(from);
+    const ratio = dim > 0 ? days/dim : 1;
+    return {
+      from, to, days,
+      basicWages: Math.round((Number(bw)||0)*ratio*100)/100,
+      leavePay:   Math.round((Number(lp)||0)*ratio*100)/100,
+      overtime:   Math.round((Number(ot)||0)*ratio*100)/100,
+    };
+  };
+
+  // ── Add row ────────────────────────────────────────────────────
+  const addRow = () => {
+    const lastRow = form.rows[form.rows.length-1];
+    let from = "";
+    if(lastRow?.to) {
+      const next = new Date(lastRow.to);
+      next.setDate(next.getDate()+1);
+      from = next.toISOString().slice(0,10);
+    } else if(form.departure) {
+      from = form.departure;
+    }
+    // to = last day of that month
+    let to = "";
+    if(from) {
+      const dt = new Date(from);
+      to = new Date(dt.getFullYear(), dt.getMonth()+1, 0).toISOString().slice(0,10);
+    }
+    const r = calcRow(from, to, form.basicWages, form.leavePay, form.overtime);
+    setForm(f=>({...f, rows:[...f.rows, r]}));
+  };
+
+  const updateRow = (i, key, val) => {
+    setForm(f=>{
+      const rows = f.rows.map((r,idx)=>{
+        if(idx!==i) return r;
+        const updated = {...r, [key]:val};
+        if(key==="from"||key==="to") {
+          updated.days = daysBetween(updated.from, updated.to);
+          const dim = daysInMonth(updated.from||updated.to);
+          const ratio = dim>0?updated.days/dim:1;
+          updated.basicWages = Math.round((Number(f.basicWages)||0)*ratio*100)/100;
+          updated.leavePay   = Math.round((Number(f.leavePay)||0)*ratio*100)/100;
+          updated.overtime   = Math.round((Number(f.overtime)||0)*ratio*100)/100;
+        }
+        return updated;
+      });
+      return {...f, rows};
+    });
+  };
+
+  const removeRow = i => setForm(f=>({...f, rows:f.rows.filter((_,idx)=>idx!==i)}));
+
+  // ── Auto-generate rows from departure/arrival ────────────────────────
+  const autoGenerateRows = (departure, arrival, bw, lp, ot) => {
+    if(!departure||!arrival) return [];
+    const rows = [];
+    let cur = new Date(departure);
+    const end = new Date(arrival);
+    while(cur <= end) {
+      const monthEnd = new Date(cur.getFullYear(), cur.getMonth()+1, 0);
+      const rowEnd = monthEnd < end ? monthEnd : end;
+      const from = cur.toISOString().slice(0,10);
+      const to   = rowEnd.toISOString().slice(0,10);
+      rows.push(calcRow(from, to, bw, lp, ot));
+      cur = new Date(rowEnd.getFullYear(), rowEnd.getMonth()+1, 1);
+    }
+    return rows;
+  };
+
+  // ── Load crew ───────────────────────────────────────────────────
+  const loadCrew = crewId => {
+    const c = crew.find(x=>String(x.id)===String(crewId));
+    if(!c) return;
+    setForm(f=>{
+      const updated = {
+        ...f,
+        name:       c.name       || f.name,
+        rank:       c.rank       || f.rank,
+        vessel:     c.vessel     || f.vessel,
+        cdc:        c.cdc        || c.cdcNo  || f.cdc,
+        pp:         c.pp         || c.passport|| f.pp,
+        basicWages: c.salary     || f.basicWages,
+        leavePay:   c.leavePay   || f.leavePay,
+      };
+      // Auto-generate rows if departure + arrival already set
+      if(f.departure && f.arrival) {
+        updated.rows = autoGenerateRows(f.departure, f.arrival, updated.basicWages, updated.leavePay, updated.overtime);
+      }
+      return updated;
+    });
+  };
+
+  // ── Save ──────────────────────────────────────────────────────────
+  const save = async () => {
+    if(!form.name) return showT("Name လိုအပ်သည်","wrn");
+    if(!form.rows.length) return showT("Month row လိုအပ်သည်","wrn");
+    const nextNum = portage.reduce((mx,p)=>{const n=parseInt((p.id||"").replace("PB-",""),10);return n>mx?n:mx;},0)+1;
+    const doc = {...form, id:`PB-${String(nextNum).padStart(3,"0")}`, total:grandTotal(form.rows), createdAt:new Date().toISOString()};
+    if(fsOk) await fs.setD("portage",doc.id,doc);
+    setPortage(prev=>[...prev,doc]);
+    setShowForm(false);
+    setForm(blankForm());
+    showT(`${doc.id} saved ✓`);
+  };
+
+  const del = async id => {
+    if(!window.confirm(`Delete ${id}?`)) return;
+    setPortage(prev=>prev.filter(p=>p.id!==id));
+    if(fsOk) await fs.delD("portage",id);
+    showT("Deleted");
+  };
+
+  // ── Print PDF ───────────────────────────────────────────────────
+  const printPortage = (p) => {
+    const total = grandTotal(p.rows);
+    const rowsHtml = p.rows.map(r=>`
+      <tr>
+        <td>${fmtDate(r.from)}</td>
+        <td>${fmtDate(r.to)}</td>
+        <td style="text-align:center">${r.days}</td>
+        <td style="text-align:right">${fmt2(r.basicWages)}</td>
+        <td style="text-align:right">${fmt2(r.leavePay)}</td>
+        <td style="text-align:right">${fmt2(r.overtime)}</td>
+        <td style="text-align:right;font-weight:bold">${fmt2(rowTotal(r))}</td>
+      </tr>`).join("");
+
+    const w = window.open("","_blank");
+    w.document.write(`
+      <html><head><title>Portage Bill — ${p.name}</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: Arial, sans-serif; font-size:11px; padding:30px; color:#111; }
+        .doc-title { text-align:center; font-size:16px; font-weight:bold; letter-spacing:1px; margin:14px 0 18px; text-transform:uppercase; text-decoration:underline; }
+        .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 30px; margin-bottom:18px; }
+        .info-row { display:flex; gap:6px; font-size:11px; padding:2px 0; }
+        .info-lbl { color:#555; min-width:130px; }
+        .info-val { font-weight:600; }
+        table { width:100%; border-collapse:collapse; margin-bottom:14px; font-size:11px; }
+        th { background:#003366; color:#fff; padding:7px 8px; text-align:left; }
+        th.r { text-align:right; } th.c { text-align:center; }
+        td { padding:6px 8px; border-bottom:1px solid #ddd; }
+        tr:nth-child(even) td { background:#f9fbff; }
+        .total-row td { font-weight:bold; background:#e8eeff; border-top:2px solid #003366; font-size:12px; }
+        .letter { margin-top:24px; border-top:1px solid #ccc; padding-top:16px; font-size:11px; line-height:2; }
+        .sig { margin-top:50px; display:flex; justify-content:space-between; }
+        .sig-box { text-align:center; width:180px; }
+        .sig-line { border-top:1px solid #333; margin-bottom:5px; padding-top:5px; }
+        @media print { body { padding:15px; } }
+      </style></head><body>
+      ${getLH()}
+      <div class="doc-title">Portage Bill</div>
+
+      <div class="info-grid">
+        <div class="info-row"><span class="info-lbl">Name</span><span class="info-val">${p.name}</span></div>
+        <div class="info-row"><span class="info-lbl">Basic Wages / Month</span><span class="info-val">$ ${fmt2(p.basicWages)}</span></div>
+        <div class="info-row"><span class="info-lbl">Rank</span><span class="info-val">${p.rank}</span></div>
+        <div class="info-row"><span class="info-lbl">Leave Pay / Month</span><span class="info-val">$ ${fmt2(p.leavePay)}</span></div>
+        <div class="info-row"><span class="info-lbl">CDC No.</span><span class="info-val">${p.cdc}</span></div>
+        <div class="info-row"><span class="info-lbl">Overtime / Month</span><span class="info-val">$ ${fmt2(p.overtime)}</span></div>
+        <div class="info-row"><span class="info-lbl">Passport No.</span><span class="info-val">${p.pp}</span></div>
+        <div class="info-row"></div>
+        <div class="info-row"><span class="info-lbl">Vessel Name</span><span class="info-val">${p.vessel}</span></div>
+        <div class="info-row"></div>
+        <div class="info-row"><span class="info-lbl">Departure from Yangon</span><span class="info-val">${fmtDate(p.departure)}</span></div>
+        <div class="info-row"><span class="info-lbl">Arrival to Yangon</span><span class="info-val">${fmtDate(p.arrival)}</span></div>
+      </div>
+
+      <table>
+        <thead><tr>
+          <th>From</th><th>To</th><th class="c">Days</th>
+          <th class="r">Basic Wages</th><th class="r">Monthly L/P</th>
+          <th class="r">Overtime</th><th class="r">Total Wages</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr class="total-row">
+          <td colspan="3">TOTAL</td>
+          <td></td><td></td><td></td>
+          <td style="text-align:right">$ ${fmt2(total)}</td>
+        </tr></tfoot>
+      </table>
+
+      <div class="letter">
+        <p>To Whom it may concern,</p>
+        <p>It is to recommended that &nbsp;<strong>${p.name}</strong></p>
+        <p>Rank &nbsp;<strong>${p.rank}</strong></p>
+        <p>CDC &nbsp;<strong>${p.cdc}</strong></p>
+        <p>PP &nbsp;<strong>${p.pp}</strong></p>
+        <p>was served on Vessel &nbsp;<strong>${p.vessel}</strong>&nbsp; with Salary &nbsp;<strong>${fmt2(total)} USD</strong>&nbsp; in MAHAR UNITY Company Limited.</p>
+      </div>
+
+      <div class="sig">
+        <div class="sig-box"><div class="sig-line"></div><div>${p.name}</div></div>
+        <div class="sig-box"><div class="sig-line"></div><div>Authorized Signatory</div></div>
+        <div class="sig-box"><div class="sig-line"></div><div>Date</div></div>
+      </div>
+
+      </body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(),500);
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────
+  const filtered = portage.filter(p=>!search||
+    p.name?.toLowerCase().includes(search.toLowerCase())||
+    p.vessel?.toLowerCase().includes(search.toLowerCase())||
+    p.rank?.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div>
+      {/* Top bar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search by name / vessel / rank..." style={{background:C.card,border:`1px solid ${C.bdr}`,borderRadius:6,color:C.txt,padding:"7px 12px",fontSize:12,outline:"none",width:280}}/>
+        <Btn onClick={()=>{setForm(blankForm());setShowForm(true);}}>+ New Portage Bill</Btn>
+      </div>
+
+      {/* List */}
+      {filtered.length===0
+        ? <div style={{textAlign:"center",padding:60,color:C.txD,border:`1px dashed ${C.bdr}`,borderRadius:8}}>
+            <div style={{fontSize:32,marginBottom:10}}>📜</div>
+            <div>No portage bills yet.</div>
+          </div>
+        : <div style={{overflowX:"auto",borderRadius:6,border:`1px solid ${C.bdr}`}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr>{["ID","Name","Rank","Vessel","Departure","Arrival","Total USD","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>{filtered.slice().sort((a,b)=>b.createdAt?.localeCompare(a.createdAt)).map(p=>(
+                <tr key={p.id} {...trHover}>
+                  <td style={{...tdS,color:C.acc,fontWeight:600}}>{p.id}</td>
+                  <td style={{...tdS,fontWeight:600}}>{p.name}</td>
+                  <td style={tdS}>{p.rank}</td>
+                  <td style={tdS}>{p.vessel}</td>
+                  <td style={tdS}>{fmtDate(p.departure)}</td>
+                  <td style={tdS}>{fmtDate(p.arrival)}</td>
+                  <td style={{...tdS,color:C.ok,fontWeight:700}}>$ {fmt2(p.total)}</td>
+                  <td style={tdS}>
+                    <div style={{display:"flex",gap:6}}>
+                      <Btn v="pri" s={{fontSize:9}} onClick={()=>printPortage(p)}>🖨️ Print</Btn>
+                      {userRole==="admin" && <Btn v="err" s={{fontSize:9}} onClick={()=>del(p.id)}>🗑️</Btn>}
+                    </div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+      }
+
+      {/* Create / Edit Modal */}
+      {showForm && <Mod title="New Portage Bill" onClose={()=>setShowForm(false)} w={820}>
+
+        {/* Crew quick-load */}
+        <div style={{marginBottom:14,padding:"8px 12px",background:`${C.inf}10`,border:`1px solid ${C.inf}30`,borderRadius:6}}>
+          <label style={{fontSize:10,color:C.inf,fontWeight:700,display:"block",marginBottom:5}}>Quick Load from Crew Registry (Optional)</label>
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <select onChange={e=>loadCrew(e.target.value)} defaultValue="" style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.txt,padding:"5px 9px",fontSize:11.5,outline:"none"}}>
+              <option value="">-- Select crew to auto-fill --</option>
+              {crew.map(c=><option key={c.id} value={c.id}>{c.name} ({c.rank}) — {c.vessel}</option>)}
+            </select>
+            <span style={{fontSize:10,color:C.txD}}>Registry ကနေ auto-fill — သို့မဟုတ် အောက်မှာ manual ရိုက်ထည့်နိုင်သည်</span>
+          </div>
+        </div>
+
+        {/* Header info */}
+        <div style={{fontSize:10,fontWeight:700,color:C.txM,letterSpacing:"0.8px",marginBottom:8}}>CREW INFORMATION</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+          {[
+            ["Name *","name"],["Rank","rank"],["Vessel","vessel"],
+            ["CDC No.","cdc"],["Passport No.","pp"],["",null],
+            ["Departure from Yangon","departure","date"],["Arrival to Yangon","arrival","date"],["",null],
+          ].map(([l,k,t],i)=>!k?<div key={i}/>:(
+            <div key={k}>
+              <label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>{l}</label>
+              <input
+                type={t||"text"}
+                value={form[k]||""}
+                onClick={t==="date"?e=>{try{e.target.showPicker()}catch(err){}}:undefined}
+                onChange={e=>{
+                  const val = e.target.value;
+                  setForm(f=>{
+                    const updated = {...f,[k]:val};
+                    // Auto-generate rows when both departure & arrival are set
+                    if((k==="departure"||k==="arrival")) {
+                      const dep = k==="departure"?val:f.departure;
+                      const arr = k==="arrival"?val:f.arrival;
+                      if(dep && arr && new Date(dep)<=new Date(arr)) {
+                        updated.rows = autoGenerateRows(dep, arr, f.basicWages, f.leavePay, f.overtime);
+                      }
+                    }
+                    return updated;
+                  });
+                }}
+                style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:t==="date"?C.acc:C.txt,padding:"6px 9px",fontSize:11.5,outline:"none",width:"100%",boxSizing:"border-box",cursor:t==="date"?"pointer":"text"}}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Monthly rates */}
+        <div style={{fontSize:10,fontWeight:700,color:C.txM,letterSpacing:"0.8px",marginBottom:8}}>MONTHLY RATES (used for auto-calculation)</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16,padding:"10px 12px",background:`${C.ok}08`,border:`1px solid ${C.ok}20`,borderRadius:6}}>
+          {[["Basic Wages / Month ($)","basicWages"],["Leave Pay / Month ($)","leavePay"],["Overtime / Month ($)","overtime"]].map(([l,k])=>(
+            <div key={k}>
+              <label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>{l}</label>
+              <input type="number" value={form[k]||0} onChange={e=>{
+                const val = Number(e.target.value);
+                setForm(f=>{
+                  const updated = {...f,[k]:val};
+                  if(f.departure && f.arrival) {
+                    const bw = k==="basicWages"?val:f.basicWages;
+                    const lp = k==="leavePay"?val:f.leavePay;
+                    const ot = k==="overtime"?val:f.overtime;
+                    updated.rows = autoGenerateRows(f.departure, f.arrival, bw, lp, ot);
+                  }
+                  return updated;
+                });
+              }} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.ok,padding:"6px 9px",fontSize:13,fontWeight:700,outline:"none",width:"100%",boxSizing:"border-box"}}/>
+            </div>
+          ))}
+        </div>
+
+        {/* Month rows */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.txM,letterSpacing:"0.8px"}}>MONTHLY BREAKDOWN</div>
+          <Btn v="sec" s={{fontSize:10}} onClick={addRow}>+ Add Month</Btn>
+        </div>
+
+        {form.rows.length===0
+          ? <div style={{textAlign:"center",padding:"14px",color:C.txD,border:`1px dashed ${C.bdr}`,borderRadius:6,marginBottom:12,fontSize:11}}>Click "+ Add Month" to add monthly rows</div>
+          : <div style={{overflowX:"auto",marginBottom:12}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead><tr style={{background:C.bg}}>
+                  {["From","To","Days","Basic Wages ($)","L/P ($)","Overtime ($)","Total ($)",""].map(h=><th key={h} style={{...thS,fontSize:9,padding:"5px 6px"}}>{h}</th>)}
+                </tr></thead>
+                <tbody>{form.rows.map((r,i)=>(
+                  <tr key={i} style={{background:i%2===0?C.card:C.sf}}>
+                    <td style={{padding:"4px 4px"}}><input type="date" value={r.from||""} onChange={e=>updateRow(i,"from",e.target.value)} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:4,color:C.txt,padding:"3px 5px",fontSize:10,outline:"none",width:110}}/></td>
+                    <td style={{padding:"4px 4px"}}><input type="date" value={r.to||""} onChange={e=>updateRow(i,"to",e.target.value)} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:4,color:C.txt,padding:"3px 5px",fontSize:10,outline:"none",width:110}}/></td>
+                    <td style={{padding:"4px 6px",textAlign:"center",color:C.txM,fontWeight:600}}>{r.days||0}</td>
+                    <td style={{padding:"4px 4px"}}><input type="number" value={r.basicWages||0} onChange={e=>setForm(f=>{const rows=[...f.rows];rows[i]={...rows[i],basicWages:Number(e.target.value)};return{...f,rows};})} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:4,color:C.txt,padding:"3px 5px",fontSize:10,outline:"none",width:80,textAlign:"right"}}/></td>
+                    <td style={{padding:"4px 4px"}}><input type="number" value={r.leavePay||0} onChange={e=>setForm(f=>{const rows=[...f.rows];rows[i]={...rows[i],leavePay:Number(e.target.value)};return{...f,rows};})} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:4,color:C.txt,padding:"3px 5px",fontSize:10,outline:"none",width:70,textAlign:"right"}}/></td>
+                    <td style={{padding:"4px 4px"}}><input type="number" value={r.overtime||0} onChange={e=>setForm(f=>{const rows=[...f.rows];rows[i]={...rows[i],overtime:Number(e.target.value)};return{...f,rows};})} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:4,color:C.txt,padding:"3px 5px",fontSize:10,outline:"none",width:80,textAlign:"right"}}/></td>
+                    <td style={{padding:"4px 8px",textAlign:"right",fontWeight:700,color:C.ok,fontSize:11}}>{fmt2(rowTotal(r))}</td>
+                    <td style={{padding:"4px 4px",textAlign:"center"}}><button onClick={()=>removeRow(i)} style={{background:"none",border:"none",color:C.err,cursor:"pointer",fontSize:13,padding:2}}>×</button></td>
+                  </tr>
+                ))}
+                <tr style={{background:C.bg,borderTop:`2px solid ${C.bdr}`}}>
+                  <td colSpan={6} style={{padding:"6px 8px",textAlign:"right",fontWeight:700,fontSize:11,color:C.txt}}>GRAND TOTAL</td>
+                  <td style={{padding:"6px 8px",textAlign:"right",fontWeight:800,fontSize:13,color:C.ok}}>$ {fmt2(grandTotal(form.rows))}</td>
+                  <td/>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+        }
+
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8}}>
+          <Btn v="sec" onClick={()=>setShowForm(false)}>Cancel</Btn>
+          <Btn v="ok" onClick={save}>Save Portage Bill</Btn>
+        </div>
+      </Mod>}
+    </div>
+  );
+}
 
 // ============================================================
 // EXPENSES & P&L MODULE

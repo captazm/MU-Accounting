@@ -99,6 +99,14 @@ service cloud.firestore {
       allow write:  if isActiveUser();
     }
 
+    // ── Portage Bills ─────────────────────────────────────────────────────────
+    match /portage/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
     // ── Expenses ───────────────────────────────────────────────────────────
     match /expenses/{docId} {
       allow read:   if isActiveUser();

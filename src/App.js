@@ -854,7 +854,7 @@ function App() {
             </button>
           )}
           Developed by{" "}
-          <span style={{ color: "#f97316", fontWeight: 700 }}>AZM</span>
+          <span style={{ color: "#A78BFA", fontWeight: 700 }}>AZM</span>
         </footer>
       </div>
     </div>

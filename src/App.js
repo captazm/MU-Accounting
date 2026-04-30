@@ -48,6 +48,7 @@ function App() {
   const [payments, setPayments] = useState([]);
   const [slips, setSlips] = useState([]);
   const [crewPay, setCrewPay] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [sb, setSb] = useState(true);
   const [modal, setModal] = useState(null);
   const [fN, setFN] = useState("");
@@ -104,7 +105,8 @@ function App() {
       fsListenCol("bills", (data) => setBills(data)),
       fsListenCol("payments", (data) => setPayments(data)),
       fsListenCol("slips", (data) => setSlips(data)),
-      fsListenCol("crewPayments", (data) => setCrewPay(data))
+      fsListenCol("crewPayments", (data) => setCrewPay(data)),
+      fsListenCol("expenses",     (data) => setExpenses(data)),
     ];
     return () => unsubs.forEach(unsub => unsub());
   }, [currentUser]);
@@ -174,7 +176,7 @@ function App() {
     { id: "reconcile", label: "Reconciliation",  icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.9"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/></svg> },
     { id: "dist",      label: "Payment Dist.",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><path d="M3 10h14M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><circle cx="5" cy="10" r="2" fill="currentColor" opacity="0.5"/><circle cx="15" cy="6" r="1.5" fill="currentColor" opacity="0.4"/><circle cx="15" cy="14" r="1.5" fill="currentColor" opacity="0.4"/></svg> },
     { id: "board",     label: "Status Board",    icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="3" width="16" height="2" rx="1" fill="currentColor" opacity="0.4"/><rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor" opacity="0.9"/><rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor" opacity="0.6"/><circle cx="17" cy="10" r="2.5" fill="currentColor" opacity="0.85"/></svg> },
-    { id: "users",     label: "User Management", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
+    { id: "expenses",  label: "Expenses",       icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" opacity="0.7"/><circle cx="6" cy="13" r="1.2" fill="currentColor" opacity="0.9"/><path d="M10 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/></svg> }, icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
   const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc, getD: fsGetDoc };
@@ -917,12 +919,14 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
     const primaryBank = (form.banks && form.banks.length > 0) ? form.banks[0] : {};
     const officeAmt = Number(form.office) || 0;
     const paidAmt   = Number(form.paidDepFees) || 0;
+    const ownerAmt  = Number(form.ownerPaid) || 0;
+    const salaryAmt = Number(form.salary) || 0;
     const f = {
       ...form,
-      ownerPaid:    Number(form.ownerPaid)    || 0,
-      salary:       Number(form.salary)       || 0,
+      ownerPaid:    ownerAmt,
+      salary:       salaryAmt,
       office:       officeAmt,
-      manningFees:  Number(form.manningFees)  || 0,
+      manningFees:  Math.max(0, ownerAmt - salaryAmt),  // Auto: Owner Paid − Salary
       leavePay:     Number(form.leavePay)     || 0,
       paidDepFees:  paidAmt,
       balanceDepFees: Math.max(0, officeAmt - paidAmt),  // Auto: Total − Paid
@@ -952,7 +956,7 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
     <Filt {...{ fN, setFN, fV, setFV, fC, setFC, vessels, clients }} />
     <div style={{ overflowX: "auto", borderRadius: 6, border: `1px solid ${C.bdr}` }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr>{["No","ID","Name","Rank","Vessel","Client","Join","OwnerPaid","Salary","DEP FEES","Paid Dep","Bal Dep","Manning","Leave Pay","Leave Pay (Acc)","Bank","Acc No","Acc Name","Type","Remark",""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
+        <thead><tr>{["No","ID","Name","Rank","Vessel","Client","Join","OwnerPaid","Salary","DEP FEES","Paid Dep (Cum.)","Bal Dep","Manning","Leave Pay","Leave Pay (Acc)","Bank","Acc No","Acc Name","Type","Remark",""].map(h => <th key={h} style={thS}>{h}</th>)}</tr></thead>
         <tbody>{filtered.map(c => (
           <tr key={c.id || c.no} {...trHover}>
             <td style={tdS}>{c.no}</td>
@@ -992,13 +996,22 @@ function CrewV({ crew, setCrew, filtered, fN, setFN, fV, setFV, fC, setFC, modal
     </div>
     {(modal === "add" || modal === "edit") && <Mod title={modal === "add" ? "Add Crew" : "Edit Crew"} onClose={() => setModal(null)}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["DEP FEES (Total)","office"],["Paid Dep Fees","paidDepFees"],["Bal Dep Fees — auto","balanceDepFees"],["Manning Fees","manningFees"],["Leave Pay / Month","leavePay"],["Leave Pay (Acc.) — auto","accumulatedLeavePay",false,true],["Remark","remark"]].map(([l, k, d, readOnly]) => {
+        {[["ID","id",true],["Name *","name"],["Rank","rank"],["Vessel","vessel"],["Client","client"],["Join Date","joinDate"],["Owner Paid","ownerPaid"],["Salary","salary"],["Manning Fees — auto","manningFees"],["DEP FEES (Total)","office"],["Paid Dep Fees (Cumulative)","paidDepFees"],["Bal Dep Fees — auto","balanceDepFees"],["Leave Pay / Month","leavePay"],["Leave Pay (Acc.) — auto","accumulatedLeavePay",false,true],["Remark","remark"]].map(([l, k, d, readOnly]) => {
           const isAutoBal = k === "balanceDepFees";
+          const isAutoManning = k === "manningFees";
+          const isPaidDep = k === "paidDepFees";
           const autoBalance = Math.max(0, (Number(form.office)||0) - (Number(form.paidDepFees)||0));
-          const displayValue = isAutoBal ? autoBalance : (form[k] ?? "");
-          const effectiveReadOnly = readOnly || isAutoBal;
+          const autoManning = Math.max(0, (Number(form.ownerPaid)||0) - (Number(form.salary)||0));
+          const displayValue = isAutoBal ? autoBalance
+                            : isAutoManning ? autoManning
+                            : (form[k] ?? "");
+          const effectiveReadOnly = readOnly || isAutoBal || isAutoManning;
           const tooltip = isAutoBal
             ? "Auto-calculated: DEP FEES (Total) − Paid Dep Fees"
+            : isAutoManning
+            ? "Auto-calculated: Owner Paid − Salary (fixed every month)"
+            : isPaidDep
+            ? "Cumulative amount crew has paid toward DEP Fees. Initially enter what crew paid before boarding. Auto-increments each month as salary deductions are processed (Mark Paid)."
             : (readOnly ? "Auto-accumulated from payroll deductions. Do not edit manually." : undefined);
           return (
           <div key={k}>

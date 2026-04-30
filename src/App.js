@@ -49,6 +49,7 @@ function App() {
   const [slips, setSlips] = useState([]);
   const [crewPay, setCrewPay] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [income,   setIncome]   = useState([]);
   const [sb, setSb] = useState(true);
   const [modal, setModal] = useState(null);
   const [fN, setFN] = useState("");
@@ -107,6 +108,7 @@ function App() {
       fsListenCol("slips", (data) => setSlips(data)),
       fsListenCol("crewPayments", (data) => setCrewPay(data)),
       fsListenCol("expenses",     (data) => setExpenses(data)),
+      fsListenCol("income",       (data) => setIncome(data)),
     ];
     return () => unsubs.forEach(unsub => unsub());
   }, [currentUser]);
@@ -176,7 +178,8 @@ function App() {
     { id: "reconcile", label: "Reconciliation",  icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.9"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/></svg> },
     { id: "dist",      label: "Payment Dist.",   icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><path d="M3 10h14M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><circle cx="5" cy="10" r="2" fill="currentColor" opacity="0.5"/><circle cx="15" cy="6" r="1.5" fill="currentColor" opacity="0.4"/><circle cx="15" cy="14" r="1.5" fill="currentColor" opacity="0.4"/></svg> },
     { id: "board",     label: "Status Board",    icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="3" width="16" height="2" rx="1" fill="currentColor" opacity="0.4"/><rect x="2" y="9" width="12" height="2" rx="1" fill="currentColor" opacity="0.9"/><rect x="2" y="15" width="9" height="2" rx="1" fill="currentColor" opacity="0.6"/><circle cx="17" cy="10" r="2.5" fill="currentColor" opacity="0.85"/></svg> },
-    { id: "expenses",  label: "Expenses",       icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" opacity="0.7"/><circle cx="6" cy="13" r="1.2" fill="currentColor" opacity="0.9"/><path d="M10 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/></svg> }, icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
+    { id: "expenses",  label: "Expenses",        icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.4"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.4" opacity="0.7"/><circle cx="6" cy="13" r="1.2" fill="currentColor" opacity="0.9"/><path d="M10 12h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/></svg> },
+    { id: "users",     label: "User Management", icon: <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{width:16,height:16}}><circle cx="10" cy="7" r="3" fill="currentColor" opacity="0.9"/><path d="M4 17c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.7"/><path d="M14 4l1.5 1.5L17 4M14 4h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/></svg>, adminOnly: true },
   ];
   const nav = allNav.filter(n => !n.adminOnly || userRole === "admin");
   const fs = { setD: fsSetDoc, upD: fsUpdateDoc, batchW: fsBatchSet, delD: fsDelDoc, getD: fsGetDoc };
@@ -817,6 +820,7 @@ function App() {
           {tab === "billing"   && <BillV {...p} />}
           {tab === "reconcile" && <ReconV {...p} />}
           {tab === "dist"      && <DistV {...p} onManualPayment={p.createManualPayment} fsUploadFile={fsUploadFile} />}
+          {tab === "expenses"  && <ExpensesV bills={bills} crewPay={crewPay} expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} showT={showT} fs={fs} fsOk={fsOk} userRole={userRole} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} />}
           {tab === "users" && userRole === "admin" && <UserManagement currentUser={currentUser} showT={showT} />}
         </div>
 
@@ -2245,5 +2249,369 @@ const exportCashPDF = (calc, rate, extra, crew) => {
   w.document.write(`<html><head><title>Cash Pickup List</title><style>body{font-family:sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px;} th{background:#f4f4f4;padding:10px;border:1px solid #ddd;text-align:left;}</style></head><body>${getLH()}<h2 style="text-align:center;margin:10px 0;font-size:16px;">CASH PICKUP LIST</h2><div style="font-size:12px;margin-bottom:15px"><b>Vessel:</b> ${calc.bill.vessel||"—"} | <b>Month:</b> ${calc.bill.month}</div><table><thead><tr><th>Name</th><th>Rank</th><th>Amount (MMK)</th><th>Signature</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:50px;font-size:12px"><div style="margin-top:40px;display:flex;justify-content:space-between"><div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Paid By</div><div style="text-align:center;width:200px;border-top:1px solid #000;padding-top:10px">Date</div></div></div></body></html>`);
   w.document.close(); setTimeout(() => w.print(), 500);
 };
+
+// ============================================================
+// EXPENSES & P&L MODULE
+// ============================================================
+const EXP_CATS = [
+  {label:"🏢 Office & Admin",value:"Office & Admin"},
+  {label:"✈️ Travel & Transport",value:"Travel & Transport"},
+  {label:"⚓ Manning Operations",value:"Manning Operations"},
+  {label:"📋 Gov & License",value:"Gov & License"},
+  {label:"🏦 Bank & Finance",value:"Bank & Finance"},
+  {label:"📱 Communication",value:"Communication"},
+  {label:"🤝 PR & Entertainment",value:"PR & Entertainment"},
+  {label:"💻 IT & Software",value:"IT & Software"},
+  {label:"🚢 Vessel Operations",value:"Vessel Operations"},
+  {label:"📦 Other",value:"Other"},
+];
+const INC_CATS = ["Document Fee","Port Charges Reimbursed","Visa Reimbursement","Medical Reimbursement","Other Income"];
+
+function ExpensesV({bills,crewPay,expenses,setExpenses,income,setIncome,showT,fs,fsOk,userRole,selectedMonth,setSelectedMonth}) {
+  const [subTab,setSubTab] = useState("pl");
+  const [expRate,setExpRate] = useState(3985);
+  const [showExpModal,setShowExpModal] = useState(false);
+  const [showIncModal,setShowIncModal] = useState(false);
+  const [expForm,setExpForm] = useState({date:new Date().toISOString().slice(0,10),category:"Office & Admin",description:"",currency:"MMK",amountMMK:0,amountUSD:0,remark:""});
+  const [incForm,setIncForm] = useState({date:new Date().toISOString().slice(0,10),category:"Document Fee",description:"",currency:"USD",amountUSD:0,amountMMK:0,remark:""});
+  const [fCat,setFCat] = useState("");
+  const [fSt,setFSt] = useState("");
+  const inp = {background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.txt,padding:"6px 9px",fontSize:11.5,outline:"none",width:"100%",boxSizing:"border-box"};
+
+  const rate = Number(expRate)||3985;
+  const toUSD = e => Number(e.amountUSD||0) + (Number(e.amountMMK||0)/rate);
+  const fmtU = v => `${(Number(v)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const fmtM = v => `${Math.round(Number(v)||0).toLocaleString()} MMK`;
+  const [sy,sm] = selectedMonth.split("-").map(Number);
+  const changeMonth = d => { const dt=new Date(sy,sm-1+d,1); setSelectedMonth(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`); };
+  const monthLabel = new Date(sy,sm-1,1).toLocaleString("en",{month:"long",year:"numeric"});
+
+  // Revenue calcs
+  const paidBills = bills.filter(b=>b.status==="Paid"&&b.month===selectedMonth);
+  const manningRev = paidBills.reduce((s,b)=>(b.crew||[]).reduce((ss,c)=>ss+(c.actManning||0),s),0);
+  const depRev = crewPay.filter(p=>p.status==="Paid"&&p.month===selectedMonth).reduce((s,p)=>s+(p.depFeeDed||0),0);
+  const extraInc = (income||[]).filter(i=>i.month===selectedMonth);
+  const extraIncUSD = extraInc.reduce((s,i)=>s+toUSD(i),0);
+  const totalRev = manningRev+depRev+extraIncUSD;
+
+  // Expense calcs
+  const mExp = (expenses||[]).filter(e=>e.month===selectedMonth);
+  const appExp = mExp.filter(e=>e.status==="Approved");
+  const pendExp = mExp.filter(e=>e.status==="Pending");
+  const totalExp = appExp.reduce((s,e)=>s+toUSD(e),0);
+  const netProfit = totalRev-totalExp;
+  const byCat = {};
+  appExp.forEach(e=>{const k=e.category||"Other";byCat[k]=(byCat[k]||0)+toUSD(e);});
+  const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const maxCat = Math.max(...catEntries.map(([,v])=>v),1);
+  const filteredExp = mExp.filter(e=>(!fCat||e.category===fCat)&&(!fSt||e.status===fSt)).slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  const saveExpense = async () => {
+    if(!expForm.description) return showT("Description လိုအပ်သည်","wrn");
+    if(!expForm.amountMMK&&!expForm.amountUSD) return showT("Amount လိုအပ်သည်","wrn");
+    const nextNum=(expenses||[]).reduce((mx,e)=>{const n=parseInt((e.id||"").replace("EXP-",""),10);return n>mx?n:mx;},0)+1;
+    const doc={id:`EXP-${String(nextNum).padStart(3,"0")}`,date:expForm.date,month:expForm.date.slice(0,7),category:expForm.category,description:expForm.description,currency:expForm.currency,amountMMK:expForm.currency==="MMK"?Number(expForm.amountMMK):0,amountUSD:expForm.currency==="USD"?Number(expForm.amountUSD):0,receiptUrl:"",status:"Pending",createdAt:new Date().toISOString(),remark:expForm.remark||""};
+    if(fsOk) await fs.setD("expenses",doc.id,doc);
+    setExpenses(prev=>[...prev,doc]);
+    setShowExpModal(false);
+    setExpForm({date:new Date().toISOString().slice(0,10),category:"Office & Admin",description:"",currency:"MMK",amountMMK:0,amountUSD:0,remark:""});
+    showT(`${doc.id} submitted ✓`);
+  };
+
+  const approveExp = async id => {
+    const up={status:"Approved",approvedAt:new Date().toISOString()};
+    setExpenses(prev=>prev.map(e=>e.id===id?{...e,...up}:e));
+    if(fsOk) await fs.upD("expenses",id,up);
+    showT("Approved ✓");
+  };
+
+  const deleteExp = async id => {
+    if(!window.confirm(`Delete ${id}?`)) return;
+    setExpenses(prev=>prev.filter(e=>e.id!==id));
+    if(fsOk) await fs.delD("expenses",id);
+    showT("Deleted");
+  };
+
+  const saveIncome = async () => {
+    if(!incForm.description) return showT("Description လိုအပ်သည်","wrn");
+    if(!incForm.amountMMK&&!incForm.amountUSD) return showT("Amount လိုအပ်သည်","wrn");
+    const nextNum=(income||[]).reduce((mx,i)=>{const n=parseInt((i.id||"").replace("INC-",""),10);return n>mx?n:mx;},0)+1;
+    const doc={id:`INC-${String(nextNum).padStart(3,"0")}`,date:incForm.date,month:incForm.date.slice(0,7),category:incForm.category,description:incForm.description,currency:incForm.currency,amountUSD:incForm.currency==="USD"?Number(incForm.amountUSD):0,amountMMK:incForm.currency==="MMK"?Number(incForm.amountMMK):0,remark:incForm.remark||"",createdAt:new Date().toISOString()};
+    if(fsOk) await fs.setD("income",doc.id,doc);
+    setIncome(prev=>[...prev,doc]);
+    setShowIncModal(false);
+    setIncForm({date:new Date().toISOString().slice(0,10),category:"Document Fee",description:"",currency:"USD",amountUSD:0,amountMMK:0,remark:""});
+    showT(`${doc.id} saved ✓`);
+  };
+
+  const deleteInc = async id => {
+    if(!window.confirm(`Delete ${id}?`)) return;
+    setIncome(prev=>prev.filter(i=>i.id!==id));
+    if(fsOk) await fs.delD("income",id);
+    showT("Deleted");
+  };
+
+  return (
+    <div>
+      {/* Month + Rate bar */}
+      <div style={{background:C.card,borderRadius:8,border:`1px solid ${C.bdr}`,padding:"10px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <button onClick={()=>changeMonth(-1)} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.txt,cursor:"pointer",padding:"3px 8px",fontSize:13}}>‹</button>
+        <input type="month" value={selectedMonth} onChange={e=>setSelectedMonth(e.target.value)} style={{background:"transparent",border:"none",color:C.acc,fontSize:15,fontWeight:700,cursor:"pointer",outline:"none"}}/>
+        <button onClick={()=>changeMonth(1)} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.txt,cursor:"pointer",padding:"3px 8px",fontSize:13}}>›</button>
+        <span style={{fontSize:11,color:C.txD}}>{monthLabel}</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:10,color:C.txM}}>MMK/USD Rate:</span>
+          <input type="number" value={expRate} onChange={e=>setExpRate(e.target.value)} style={{background:C.bg,border:`1px solid ${C.bdr}`,borderRadius:5,color:C.acc,padding:"4px 8px",fontSize:12,fontWeight:700,outline:"none",width:90,textAlign:"right"}}/>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{display:"flex",borderBottom:`1px solid ${C.bdr}`,gap:20,marginBottom:16}}>
+        {[["pl","📊 P&L Dashboard"],["exp","💳 Expenses"],["inc","💰 Income"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setSubTab(id)} style={{paddingBottom:10,border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:600,color:subTab===id?C.pri:C.txD,borderBottom:subTab===id?`2px solid ${C.pri}`:"2px solid transparent"}}>{label}</button>
+        ))}
+      </div>
+
+      {/* ── P&L DASHBOARD ── */}
+      {subTab==="pl" && (
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:16}}>
+            {/* Revenue card */}
+            <div style={{background:C.card,border:`1px solid ${C.ok}30`,borderRadius:10,padding:14}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.ok,letterSpacing:"0.8px",marginBottom:10}}>💰 REVENUE</div>
+              {[["Manning Fees",`${paidBills.length} paid bills`,manningRev],["DEP Fees Collected","from paid payroll",depRev],["Additional Income",`${extraInc.length} entries`,extraIncUSD]].map(([l,sub,v])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,paddingBottom:8,borderBottom:`1px solid ${C.bdr}40`}}>
+                  <div><div style={{fontSize:11.5,color:C.txt}}>{l}</div><div style={{fontSize:9,color:C.txD}}>{sub}</div></div>
+                  <span style={{fontSize:12,fontWeight:700,color:C.ok}}>{fmtU(v)}</span>
+                </div>
+              ))}
+              <div style={{borderTop:`1px solid ${C.ok}40`,paddingTop:8,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:11,fontWeight:700,color:C.txt}}>Total Revenue</span>
+                <span style={{fontSize:14,fontWeight:800,color:C.ok}}>{fmtU(totalRev)}</span>
+              </div>
+            </div>
+
+            {/* Expenses card */}
+            <div style={{background:C.card,border:`1px solid ${C.err}30`,borderRadius:10,padding:14}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.err,letterSpacing:"0.8px",marginBottom:10}}>💳 EXPENSES (Approved)</div>
+              {catEntries.length===0
+                ? <div style={{fontSize:11,color:C.txD,textAlign:"center",padding:"20px 0"}}>No approved expenses</div>
+                : catEntries.map(([cat,usd])=>(
+                  <div key={cat} style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:10.5,marginBottom:3}}>
+                      <span style={{color:C.txM}}>{cat}</span>
+                      <span style={{color:C.err,fontWeight:600}}>{fmtU(usd)}</span>
+                    </div>
+                    <div style={{height:4,background:C.bg,borderRadius:2}}>
+                      <div style={{height:"100%",width:`${(usd/maxCat)*100}%`,background:C.err,borderRadius:2,opacity:0.7}}/>
+                    </div>
+                  </div>
+                ))
+              }
+              {pendExp.length>0 && <div style={{marginTop:8,padding:"5px 8px",background:`${C.wrn}15`,borderRadius:5,fontSize:10,color:C.wrn}}>⏳ {pendExp.length} pending ({fmtU(pendExp.reduce((s,e)=>s+toUSD(e),0))} awaiting approval)</div>}
+              <div style={{borderTop:`1px solid ${C.err}40`,paddingTop:8,marginTop:8,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:11,fontWeight:700,color:C.txt}}>Total Expenses</span>
+                <span style={{fontSize:14,fontWeight:800,color:C.err}}>{fmtU(totalExp)}</span>
+              </div>
+            </div>
+
+            {/* Net Profit card */}
+            <div style={{background:C.card,border:`2px solid ${netProfit>=0?C.ok:C.err}40`,borderRadius:10,padding:14,display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+              <div style={{fontSize:10,fontWeight:700,color:C.txM,letterSpacing:"0.8px",marginBottom:10}}>📈 NET PROFIT / LOSS</div>
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:5}}><span style={{color:C.txD}}>Revenue</span><span style={{color:C.ok}}>{fmtU(totalRev)}</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:10}}><span style={{color:C.txD}}>Expenses</span><span style={{color:C.err}}>− {fmtU(totalExp)}</span></div>
+                <div style={{borderTop:`2px solid ${netProfit>=0?C.ok:C.err}`,paddingTop:12,textAlign:"center"}}>
+                  <div style={{fontSize:10,color:C.txD,marginBottom:4}}>NET</div>
+                  <div style={{fontSize:28,fontWeight:800,color:netProfit>=0?C.ok:C.err}}>{netProfit>=0?"+":""}{fmtU(netProfit)}</div>
+                  <div style={{fontSize:10,marginTop:4,color:netProfit>=0?C.ok:C.err}}>{netProfit>=0?"🟢 Profit":"🔴 Loss"}</div>
+                </div>
+              </div>
+              <div style={{fontSize:9,color:C.txD,marginTop:10,textAlign:"center"}}>Rate: {rate.toLocaleString()} MMK/USD · Approved expenses only</div>
+            </div>
+          </div>
+
+          {/* Paid bills breakdown */}
+          {paidBills.length>0 && (
+            <div style={{background:C.card,border:`1px solid ${C.bdr}`,borderRadius:8,padding:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.txM,marginBottom:8}}>Manning Fee Breakdown — Paid Bills</div>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr>{["Bill ID","Client","Vessel","Crew","Manning Fees"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                <tbody>{paidBills.map(b=>{
+                  const mf=(b.crew||[]).reduce((s,c)=>s+(c.actManning||0),0);
+                  return <tr key={b.id} {...trHover}>
+                    <td style={{...tdS,color:C.acc,fontWeight:600}}>{b.id}</td>
+                    <td style={tdS}>{b.client}</td><td style={tdS}>{b.vessel}</td>
+                    <td style={tdS}>{(b.crew||[]).length}</td>
+                    <td style={{...tdS,color:C.ok,fontWeight:700}}>{fmtU(mf)}</td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── EXPENSES TAB ── */}
+      {subTab==="exp" && (
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8,flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:8}}>
+              <select value={fCat} onChange={e=>setFCat(e.target.value)} style={{...inp,width:"auto"}}>
+                <option value="">All Categories</option>
+                {EXP_CATS.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              <select value={fSt} onChange={e=>setFSt(e.target.value)} style={{...inp,width:"auto"}}>
+                <option value="">All Status</option>
+                <option value="Pending">🟡 Pending</option>
+                <option value="Approved">🟢 Approved</option>
+              </select>
+            </div>
+            <Btn onClick={()=>setShowExpModal(true)}>+ Add Expense</Btn>
+          </div>
+          {filteredExp.length===0
+            ? <div style={{textAlign:"center",padding:40,color:C.txD,border:`1px dashed ${C.bdr}`,borderRadius:8}}>No expense records for {monthLabel}.</div>
+            : <div style={{overflowX:"auto",borderRadius:6,border:`1px solid ${C.bdr}`}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["ID","Date","Category","Description","Amount","≈ USD","Status","Action"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>{filteredExp.map(e=>(
+                    <tr key={e.id} {...trHover}>
+                      <td style={{...tdS,color:C.acc,fontWeight:600}}>{e.id}</td>
+                      <td style={tdS}>{e.date}</td>
+                      <td style={tdS}><span style={{fontSize:10,background:`${C.inf}15`,color:C.inf,padding:"2px 7px",borderRadius:10}}>{e.category}</span></td>
+                      <td style={tdS}>{e.description}{e.remark&&<div style={{fontSize:9,color:C.txD}}>{e.remark}</div>}</td>
+                      <td style={{...tdS,fontWeight:600}}>{e.currency==="MMK"?fmtM(e.amountMMK):fmtU(e.amountUSD)}</td>
+                      <td style={{...tdS,color:C.txM}}>{fmtU(toUSD(e))}</td>
+                      <td style={tdS}><Badge t={e.status} c={e.status==="Approved"?"green":"yellow"}/></td>
+                      <td style={tdS}>
+                        <div style={{display:"flex",gap:5}}>
+                          {e.status==="Pending"&&userRole==="admin"&&<Btn v="ok" s={{fontSize:9}} onClick={()=>approveExp(e.id)}>✓ Approve</Btn>}
+                          {e.status==="Pending"&&userRole!=="admin"&&<span style={{fontSize:9,color:C.txD}}>Waiting admin</span>}
+                          {userRole==="admin"&&<Btn v="err" s={{fontSize:9}} onClick={()=>deleteExp(e.id)}>🗑️</Btn>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}</tbody>
+                  <tfoot><tr style={{background:C.bg}}>
+                    <td colSpan={5} style={{...tdS,textAlign:"right",fontWeight:700}}>Total Approved:</td>
+                    <td style={{...tdS,fontWeight:800,color:C.err,fontSize:13}}>{fmtU(totalExp)}</td>
+                    <td colSpan={2}/>
+                  </tr></tfoot>
+                </table>
+              </div>
+          }
+        </div>
+      )}
+
+      {/* ── INCOME TAB ── */}
+      {subTab==="inc" && (
+        <div>
+          <div style={{background:C.card,border:`1px solid ${C.bdr}`,borderRadius:8,padding:12,marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.txM,marginBottom:8}}>📥 Auto Income — from Payroll System</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{background:C.bg,borderRadius:7,padding:"10px 12px",border:`1px solid ${C.bdr}`}}>
+                <div style={{fontSize:10,color:C.txD,marginBottom:3}}>Manning Fees (Paid Bills)</div>
+                <div style={{fontSize:16,fontWeight:800,color:C.ok}}>{fmtU(manningRev)}</div>
+                <div style={{fontSize:9,color:C.txD}}>{paidBills.length} bills reconciled</div>
+              </div>
+              <div style={{background:C.bg,borderRadius:7,padding:"10px 12px",border:`1px solid ${C.bdr}`}}>
+                <div style={{fontSize:10,color:C.txD,marginBottom:3}}>DEP Fees (Paid Payroll)</div>
+                <div style={{fontSize:16,fontWeight:800,color:C.ok}}>{fmtU(depRev)}</div>
+                <div style={{fontSize:9,color:C.txD}}>from Mark Paid records</div>
+              </div>
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.txM}}>➕ Additional Income (Manual)</div>
+            <Btn onClick={()=>setShowIncModal(true)}>+ Add Income</Btn>
+          </div>
+          {extraInc.length===0
+            ? <div style={{textAlign:"center",padding:30,color:C.txD,border:`1px dashed ${C.bdr}`,borderRadius:8}}>No additional income entries for {monthLabel}.</div>
+            : <div style={{overflowX:"auto",borderRadius:6,border:`1px solid ${C.bdr}`}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["ID","Date","Category","Description","Amount","≈ USD",""].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <tbody>{extraInc.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(i=>(
+                    <tr key={i.id} {...trHover}>
+                      <td style={{...tdS,color:C.acc,fontWeight:600}}>{i.id}</td>
+                      <td style={tdS}>{i.date}</td>
+                      <td style={tdS}><span style={{fontSize:10,background:`${C.ok}15`,color:C.ok,padding:"2px 7px",borderRadius:10}}>{i.category}</span></td>
+                      <td style={tdS}>{i.description}{i.remark&&<div style={{fontSize:9,color:C.txD}}>{i.remark}</div>}</td>
+                      <td style={{...tdS,fontWeight:600}}>{i.currency==="MMK"?fmtM(i.amountMMK):fmtU(i.amountUSD)}</td>
+                      <td style={{...tdS,color:C.ok,fontWeight:700}}>{fmtU(toUSD(i))}</td>
+                      <td style={tdS}>{userRole==="admin"&&<Btn v="err" s={{fontSize:9}} onClick={()=>deleteInc(i.id)}>🗑️</Btn>}</td>
+                    </tr>
+                  ))}</tbody>
+                  <tfoot><tr style={{background:C.bg}}>
+                    <td colSpan={5} style={{...tdS,textAlign:"right",fontWeight:700}}>Total Additional:</td>
+                    <td style={{...tdS,fontWeight:800,color:C.ok,fontSize:13}}>{fmtU(extraIncUSD)}</td>
+                    <td/>
+                  </tr></tfoot>
+                </table>
+              </div>
+          }
+        </div>
+      )}
+
+      {/* Add Expense Modal */}
+      {showExpModal && <Mod title="Add Expense" onClose={()=>setShowExpModal(false)} w={500}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Date</label><input type="date" value={expForm.date} onChange={e=>setExpForm(f=>({...f,date:e.target.value}))} style={inp}/></div>
+          <div><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Category</label>
+            <select value={expForm.category} onChange={e=>setExpForm(f=>({...f,category:e.target.value}))} style={inp}>
+              {EXP_CATS.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div style={{gridColumn:"1/-1"}}><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Description *</label><input value={expForm.description} onChange={e=>setExpForm(f=>({...f,description:e.target.value}))} placeholder="e.g. April office rent" style={inp}/></div>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:10,color:C.txM,display:"block",marginBottom:6}}>Currency & Amount *</label>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {["MMK","USD"].map(cur=>(
+                <button key={cur} onClick={()=>setExpForm(f=>({...f,currency:cur,amountMMK:0,amountUSD:0}))} style={{padding:"5px 16px",borderRadius:6,border:`1px solid ${expForm.currency===cur?C.pri:C.bdr}`,background:expForm.currency===cur?`${C.pri}20`:C.bg,color:expForm.currency===cur?C.pri:C.txM,fontWeight:expForm.currency===cur?700:400,cursor:"pointer",fontSize:12}}>{cur}</button>
+              ))}
+              <input type="number" value={expForm.currency==="MMK"?expForm.amountMMK:expForm.amountUSD} onChange={e=>setExpForm(f=>({...f,amountMMK:f.currency==="MMK"?Number(e.target.value):0,amountUSD:f.currency==="USD"?Number(e.target.value):0}))} placeholder="0" style={{...inp,width:160,fontWeight:700,fontSize:14,color:C.acc}}/>
+              {expForm.currency==="MMK"&&expForm.amountMMK>0&&<span style={{fontSize:10,color:C.txD}}>≈ {fmtU(expForm.amountMMK/rate)}</span>}
+              {expForm.currency==="USD"&&expForm.amountUSD>0&&<span style={{fontSize:10,color:C.txD}}>≈ {fmtM(expForm.amountUSD*rate)}</span>}
+            </div>
+          </div>
+          <div style={{gridColumn:"1/-1"}}><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Remark</label><input value={expForm.remark} onChange={e=>setExpForm(f=>({...f,remark:e.target.value}))} placeholder="Optional notes..." style={inp}/></div>
+        </div>
+        <div style={{background:`${C.wrn}10`,border:`1px solid ${C.wrn}30`,borderRadius:6,padding:"8px 12px",marginTop:12,fontSize:10,color:C.wrn}}>⏳ Requires Admin approval before appearing in P&L.</div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
+          <Btn v="sec" onClick={()=>setShowExpModal(false)}>Cancel</Btn>
+          <Btn v="ok" onClick={saveExpense}>Submit for Approval</Btn>
+        </div>
+      </Mod>}
+
+      {/* Add Income Modal */}
+      {showIncModal && <Mod title="Add Additional Income" onClose={()=>setShowIncModal(false)} w={500}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Date</label><input type="date" value={incForm.date} onChange={e=>setIncForm(f=>({...f,date:e.target.value}))} style={inp}/></div>
+          <div><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Category</label>
+            <select value={incForm.category} onChange={e=>setIncForm(f=>({...f,category:e.target.value}))} style={inp}>
+              {INC_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div style={{gridColumn:"1/-1"}}><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Description *</label><input value={incForm.description} onChange={e=>setIncForm(f=>({...f,description:e.target.value}))} placeholder="e.g. Crew document processing fee" style={inp}/></div>
+          <div style={{gridColumn:"1/-1"}}>
+            <label style={{fontSize:10,color:C.txM,display:"block",marginBottom:6}}>Currency & Amount *</label>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {["USD","MMK"].map(cur=>(
+                <button key={cur} onClick={()=>setIncForm(f=>({...f,currency:cur,amountMMK:0,amountUSD:0}))} style={{padding:"5px 16px",borderRadius:6,border:`1px solid ${incForm.currency===cur?C.ok:C.bdr}`,background:incForm.currency===cur?`${C.ok}20`:C.bg,color:incForm.currency===cur?C.ok:C.txM,fontWeight:incForm.currency===cur?700:400,cursor:"pointer",fontSize:12}}>{cur}</button>
+              ))}
+              <input type="number" value={incForm.currency==="USD"?incForm.amountUSD:incForm.amountMMK} onChange={e=>setIncForm(f=>({...f,amountUSD:f.currency==="USD"?Number(e.target.value):0,amountMMK:f.currency==="MMK"?Number(e.target.value):0}))} placeholder="0" style={{...inp,width:160,fontWeight:700,fontSize:14,color:C.ok}}/>
+              {incForm.currency==="MMK"&&incForm.amountMMK>0&&<span style={{fontSize:10,color:C.txD}}>≈ {fmtU(incForm.amountMMK/rate)}</span>}
+              {incForm.currency==="USD"&&incForm.amountUSD>0&&<span style={{fontSize:10,color:C.txD}}>≈ {fmtM(incForm.amountUSD*rate)}</span>}
+            </div>
+          </div>
+          <div style={{gridColumn:"1/-1"}}><label style={{fontSize:10,color:C.txM,display:"block",marginBottom:3}}>Remark</label><input value={incForm.remark} onChange={e=>setIncForm(f=>({...f,remark:e.target.value}))} placeholder="Optional notes..." style={inp}/></div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:14}}>
+          <Btn v="sec" onClick={()=>setShowIncModal(false)}>Cancel</Btn>
+          <Btn v="ok" onClick={saveIncome}>Save Income</Btn>
+        </div>
+      </Mod>}
+    </div>
+  );
+}
 
 export default App;

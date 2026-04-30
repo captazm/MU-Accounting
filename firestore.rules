@@ -99,6 +99,22 @@ service cloud.firestore {
       allow write:  if isActiveUser();
     }
 
+    // ── Expenses ───────────────────────────────────────────────────────────
+    match /expenses/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
+    // ── Income (additional income entries) ───────────────────────────────
+    match /income/{docId} {
+      allow read:   if isActiveUser();
+      allow create: if isActiveUser();
+      allow update: if isActiveUser();
+      allow delete: if isActiveAdmin();
+    }
+
     // ── Deny everything else by default ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

@@ -111,7 +111,7 @@ service cloud.firestore {
     match /expenses/{docId} {
       allow read:   if isActiveUser();
       allow create: if isActiveUser();
-      allow update: if isActiveUser();
+      allow update: if isActiveUser() && (isActiveAdmin() || request.resource.data.status != 'Approved');
       allow delete: if isActiveAdmin();
     }
 

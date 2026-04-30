@@ -56,11 +56,18 @@ export async function fetchAllUsers() {
 }
 
 // ── Check if any users exist (first-time setup detection) ─────────────────
+// Checks _meta/setup (public read) instead of users collection (auth required)
 export async function hasAnyUser() {
   try {
-    const snap = await getDocs(collection(db, "users"));
-    return !snap.empty;
+    const snap = await getDoc(doc(db, "_meta", "setup"));
+    if (snap.exists()) {
+      const data = snap.data();
+      // Either setupComplete (set by setupFirstAdmin) or initialized (set manually)
+      return data.setupComplete === true || data.initialized === true;
+    }
+    return false;
   } catch (e) {
+    console.error("hasAnyUser error:", e);
     return false;
   }
 }
